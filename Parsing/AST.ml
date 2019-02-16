@@ -179,9 +179,6 @@ type t = {
     type_list : asttype list;
   }
 
-
-
-
 let string_of_value = function
   | String s -> "\""^s^"\""
   | Boolean b -> string_of_bool b

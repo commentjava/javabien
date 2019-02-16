@@ -12,3 +12,20 @@ let define env n t =
     result
 
 let iter f = Hashtbl.iter (fun s i -> f (s,i))
+
+let print name print_key print_val env =
+  if (Hashtbl.length env > 0) then
+    begin
+      if (name <> "") then print_string (name^": ");
+      let first = ref true in
+      Hashtbl.iter 
+	(fun key value -> 
+	  if !first then
+	    first := false
+	  else
+	    print_newline();
+      print_key key;
+      print_string ":";
+      print_val value)  
+    env
+    end
