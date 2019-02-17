@@ -17,7 +17,7 @@ let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
   let convertible_ref = ["Boolean"; "Byte"; "Character"; "Short"; "Integer"; "Long"; "Float"; "Double"] in
   match type_ with
   | Type.Primitive(p) -> p
-  | Type.Ref(ref_type) when (List.length ref_type.tpath) == 0 && (List.mem ref_type.tid convertible_ref) -> 
+  | Type.Ref(ref_type) when (List.length ref_type.tpath) == 0 && (List.mem ref_type.tid convertible_ref) ->
     match ref_type.tid with (* TODO this doesn't handle types that inherit from the convertible ones *)
     | "Boolean" -> Type.Boolean
     | "Byte" -> Type.Byte
@@ -56,7 +56,7 @@ let rec check_op env (e1: AST.expression) (op: AST.infix_op) (e2: AST.expression
   (* | Op_and -> Type.Int TODO check expression types and fix returned type *)
   (* | Op_xor -> Type.Int TODO check expression types and fix returned type *)
   (* | Op_eq -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_ne -> Type.Int TODO check expression types and fix returned type *)  
+  (* | Op_ne -> Type.Int TODO check expression types and fix returned type *)
   (* | Op_gt -> Type.Int TODO check expression types and fix returned type *)
   (* | Op_lt -> Type.Int TODO check expression types and fix returned type *)
   (* | Op_ge -> Type.Int TODO check expression types and fix returned type *)

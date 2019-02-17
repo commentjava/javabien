@@ -1,18 +1,21 @@
-type method_desc = (Type.t * Type.t list)
+type javamethod = {
+  return_type: Type.t;
+  args_types: (string, Type.t) Env.t;
+}
 
 type javaclass = {
   attributes: (string, Type.t) Env.t;
-  methods: (string, method_desc) Env.t;
+  methods: (string, javamethod) Env.t;
 }
 
-(*** Env printing ***)
-
 let print_type t =
-  print_string (Type.stringOf t)
+  print_string (Type.stringOf t);
+  print_newline()
 ;;
 
-let print_method ((return_type, args_types): method_desc) =
-  print_type return_type
+let print_method (m: javamethod) =
+  print_type m.return_type;
+  Env.print "args" print_string print_type m.args_types 4
 ;;
 
 let print_methods methods =
@@ -31,10 +34,9 @@ let print_javaclass (v: javaclass) =
   print_newline()
 ;;
 
-(*** Env creation ***)
-
 let env_astattribute env (attribute: AST.astattribute) =
   Env.define env attribute.aname attribute.atype
+;;
 
 let rec env_astattribute_list env attribute_list =
   match attribute_list with
@@ -43,12 +45,20 @@ let rec env_astattribute_list env attribute_list =
 ;;
 
 let env_astmethod env (amethod: AST.astmethod) =
-  let rec get_args_type (argstype: AST.argument list) current_args =
+  let env_args = Env.initial() in
+  let rec get_args_type (argstype: AST.argument list) args_env =
     match argstype with
-    | [] -> current_args
-    | h::t -> get_args_type t (current_args @ [h.ptype])
+    | [] -> args_env
+    | h::t -> (
+      let args_env_tmp = Env.define args_env h.pident h.ptype in
+      get_args_type t args_env_tmp
+    )
   in
-  Env.define env amethod.mname (amethod.mreturntype, (get_args_type amethod.margstype []))
+  let args_env_tmp = get_args_type amethod.margstype env_args in
+  Env.define env amethod.mname {
+    return_type = amethod.mreturntype;
+    args_types = args_env_tmp
+  }
 ;;
 
 let rec env_astmethod_list env method_list =
