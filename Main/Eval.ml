@@ -131,6 +131,12 @@ let rec execute_expression mem (expr : AST.expression) =
       | AST.Boolean b -> new_mem_obj mem (Primitive(Boolean(b)));
       | _ -> 0;
   );
+  (* | AST.If (cond, is_true, is_false) -> (
+      let res_id = execute_expression mem cond in
+      match Hashtbl.find !mem.data res_id with
+      | Primitive(Boolean(true)) -> execute_expression mem is_true;
+      | Primitive(Boolean(false)) -> execute_expression mem is_false;
+  ); *)
   | AST.New (None, fqn, args) -> (
     let class_id = resolve_fqn mem fqn in
     new_mem_obj mem (Object {
@@ -165,10 +171,10 @@ let rec execute_expression mem (expr : AST.expression) =
       | AST.Op_div -> div_primitives
       | AST.Op_mod -> mod_primitives in
       op mem (e1_val, e2_val);
-  | _ -> raise(NotImplemented "Statement Implemented");;
+  | _ -> raise(NotImplemented "Expression Implemented");;
 
 (** Execute a statement in memory *)
-let execute_statement mem = function
+let rec execute_statement mem = function
   (** TODO: Take into account the type for apparent type` *)
 	| AST.VarDecl dl ->
       List.iter (fun (t, name, init) ->
@@ -183,6 +189,23 @@ let execute_statement mem = function
       new_mem_name mem name variable_id;
       )
       dl
+  | AST.If (cond, is_true, is_false) -> (
+      let res_id = execute_expression mem cond in
+      match Hashtbl.find !mem.data res_id, is_false with
+      | Primitive(Boolean(true)), _ -> execute_statement mem is_true;
+      | Primitive(Boolean(false)), Some(e) -> execute_statement mem e;
+      | Primitive(Boolean(false)), None -> ();
+  );
+  | AST.While (cond, body) -> (
+    let rec run_while cond body =
+      let res_id = execute_expression mem cond in
+      match Hashtbl.find !mem.data res_id with
+      | Primitive(Boolean(true)) -> (execute_statement mem body; run_while cond body;)
+      | Primitive(Boolean(false)) -> (); in
+    run_while cond body;
+      );
+  | Block b -> List.iter (execute_statement mem) b;
+  | Nop -> ();
   | _ -> raise(NotImplemented "Statement Implemented");;
 
 (** Execute the method located at the method_id memory address

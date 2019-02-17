@@ -67,7 +67,8 @@ let print_memory_unit u =
       Printf.printf "\tInstance of: %i\n" o.t;
   | Null ->
       Printf.printf "\t[null]\n";
-  | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;;
+  | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
+  | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;;
 
 let print_memory m =
   Printf.printf "Names in scope :\n";
