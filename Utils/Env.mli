@@ -18,4 +18,4 @@ val define : ('a,'b) t -> 'a -> 'b -> ('a,'b) t
 val iter : ('a * 'b -> unit) -> ('a,'b) t -> unit
 
 (* A function to print a hash table *)
-val print : string -> ('a -> unit) -> ('b -> unit) -> ('a, 'b) t -> unit
+val print : string -> ('a -> unit) -> ('b -> unit) -> ('a, 'b) t -> int -> unit
