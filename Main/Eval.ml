@@ -42,16 +42,93 @@ let resolve_fqn mem fqn =
     obj_id
     (List.tl fqn);;
 
+let cor_primitives mem = function
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 || i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let cand_primitives mem = function
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 && i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let or_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 lor i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let and_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 land i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let xor_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 lxor i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
 (** Operation to add two Primitive types *)
 let add_primitives mem = function
   | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 + i2)));
   | _ -> raise (InvalidOp "Cannot add those primitives");;
+
+(** Operation to add two Primitive types *)
+let sub_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 - i2)));
+  | _ -> raise (InvalidOp "Cannot sub those primitives");;
+
+(** Operation to multiply two Primitive types *)
+let mul_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 * i2)));
+  | _ -> raise (InvalidOp "Cannot mul those primitives");;
+
+(** Operation to divide two Primitive types *)
+let div_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 * i2)));
+  | _ -> raise (InvalidOp "Cannot mul those primitives");;
+
+(** Operation to mod two Primitive types *)
+let mod_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 mod i2)));
+  | _ -> raise (InvalidOp "Cannot mod those primitives");;
+
+let eq_primitives mem = function
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 == i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let ne_primitives mem = function
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 != i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let gt_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Boolean(i1 > i2)));
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 > i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let lt_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Boolean(i1 < i2)));
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 < i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let ge_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Boolean(i1 >= i2)));
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 >= i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let le_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Boolean(i1 <= i2)));
+  | Boolean(i1), Boolean(i2) -> new_mem_obj mem (Primitive(Boolean(i1 <= i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let shl_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 lsl i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+
+let shr_primitives mem = function
+  | Int(i1), Int(i2) -> new_mem_obj mem (Primitive(Int(i1 lsr i2)));
+  | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 (** Execute an expression in memory *)
 let rec execute_expression mem (expr : AST.expression) =
   match expr.edesc with
   | AST.Val v -> (match v with
       | AST.Int i -> new_mem_obj mem (Primitive(Int(int_of_string i)));
+      | AST.Boolean b -> new_mem_obj mem (Primitive(Boolean(b)));
       | _ -> 0;
   );
   | AST.New (None, fqn, args) -> (
@@ -68,9 +145,26 @@ let rec execute_expression mem (expr : AST.expression) =
         | Primitive(p1), Primitive(p2) -> p1, p2;
         | _ -> raise (InvalidOp "Operations can only be done on primitives");
       in
-      (match op with
-      | AST.Op_add -> add_primitives mem (e1_val, e2_val)
-      );
+      let op = match op with
+      | AST.Op_cor -> mod_primitives
+      | AST.Op_cand -> mod_primitives
+      | AST.Op_or -> or_primitives
+      | AST.Op_and -> and_primitives
+      | AST.Op_xor -> xor_primitives
+      | AST.Op_eq -> eq_primitives
+      | AST.Op_ne -> ne_primitives
+      | AST.Op_gt -> gt_primitives
+      | AST.Op_lt -> lt_primitives
+      | AST.Op_ge -> ge_primitives
+      | AST.Op_le -> le_primitives
+      | AST.Op_shl -> shl_primitives
+      | AST.Op_shr -> shr_primitives
+      | AST.Op_add -> add_primitives
+      | AST.Op_sub -> sub_primitives
+      | AST.Op_mul -> mul_primitives
+      | AST.Op_div -> div_primitives
+      | AST.Op_mod -> mod_primitives in
+      op mem (e1_val, e2_val);
   | _ -> raise(NotImplemented "Statement Implemented");;
 
 (** Execute a statement in memory *)

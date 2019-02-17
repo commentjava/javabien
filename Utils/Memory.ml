@@ -34,6 +34,7 @@ and m_object = {
 }
 and m_primitive =
   | Int of int
+  | Boolean of bool
 and memory_unit =
   | Class of m_class
   | Method of m_method
