@@ -28,13 +28,18 @@ type m_class = {
 }
 and m_method = {
   body : AST.statement list
-} and m_object = {
+}
+and m_object = {
   t : memory_address
 }
+and m_primitive =
+  | Int of int
 and memory_unit =
   | Class of m_class
   | Method of m_method
   | Object of m_object
+  | Primitive of m_primitive
+  | Null
 
 type data_store = (memory_address, memory_unit) Hashtbl.t
 type reference_store = (name, memory_address) Hashtbl.t
@@ -58,7 +63,10 @@ let print_memory_unit u =
       List.iter (AST.print_statement "\t") m.body;
   | Object o ->
       Printf.printf "\t[Object]\n";
-      Printf.printf "\tInstance of: %i\n" o.t;;
+      Printf.printf "\tInstance of: %i\n" o.t;
+  | Null ->
+      Printf.printf "\t[null]\n";
+  | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;;
 
 let print_memory m =
   Printf.printf "Names in scope :\n";
@@ -66,7 +74,7 @@ let print_memory m =
 
   Printf.printf "\nMemory Structure :\n";
 	Hashtbl.iter (fun x y ->
-    Printf.printf "%i -> \n" x;
+    Printf.printf "%i -> " x;
     print_memory_unit y;
   ) m.data;;
 
