@@ -1,16 +1,31 @@
+type javamattribute = {
+  atype: Type.t;
+  loc: Location.t;
+}
+
 type javamethod = {
   return_type: Type.t;
   args_types: (string, Type.t) Env.t;
+  loc : Location.t;
 }
 
 type javaclass = {
-  attributes: (string, Type.t) Env.t;
+  attributes: (string, javamattribute) Env.t;
   methods: (string, javamethod) Env.t;
+  loc : Location.t;
 }
+
+
+(*******  Env Printing  ********)
+
 
 let print_type t =
   print_string (Type.stringOf t);
   print_newline()
+;;
+
+let print_attribute (a: javamattribute) =
+  print_type a.atype
 ;;
 
 let print_method (m: javamethod) =
@@ -23,7 +38,7 @@ let print_methods methods =
 ;;
 
 let print_attributes attributes =
-  Env.print "Attributes" print_string print_type attributes 2
+  Env.print "Attributes" print_string print_attribute attributes 2
 ;;
 
 let print_javaclass (v: javaclass) =
@@ -31,11 +46,20 @@ let print_javaclass (v: javaclass) =
   print_methods v.methods;
   print_newline();
   print_attributes v.attributes;
-  print_newline()
+  print_newline();
+  (* Location.print v.loc;
+  print_newline() *)
 ;;
 
+
+(*******  Env Creating  ********)
+
+
 let env_astattribute env (attribute: AST.astattribute) =
-  Env.define env attribute.aname attribute.atype
+  Env.define env attribute.aname {
+    atype = attribute.atype;
+    loc = attribute.aloc
+  }
 ;;
 
 let rec env_astattribute_list env attribute_list =
@@ -57,7 +81,8 @@ let env_astmethod env (amethod: AST.astmethod) =
   let args_env_tmp = get_args_type amethod.margstype env_args in
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
-    args_types = args_env_tmp
+    args_types = args_env_tmp;
+    loc = amethod.mloc
   }
 ;;
 
@@ -75,7 +100,11 @@ let env_asttype env (asttype: AST.asttype) =
     let attributes = env_astattribute_list attributes astclass.cattributes in
     let methods = Env.initial() in
     let methods = env_astmethod_list methods astclass.cmethods in
-    Env.define env asttype.id {attributes; methods}
+    Env.define env asttype.id {
+      attributes;
+      methods;
+      loc = astclass.cloc;
+    }
   | AST.Inter -> env (* Interfaces not implemented *)
 ;;
 
