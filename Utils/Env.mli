@@ -17,5 +17,8 @@ val define : ('a,'b) t -> 'a -> 'b -> ('a,'b) t
 (* iterate a function over all the bindings of the environment *)
 val iter : ('a * 'b -> unit) -> ('a,'b) t -> unit
 
+(* returns values *)
+val values :  ('a,'b) t -> 'b list
+
 (* A function to print a hash table *)
 val print : string -> ('a -> unit) -> ('b -> unit) -> ('a, 'b) t -> int -> unit

@@ -1,3 +1,7 @@
+exception MethodAlreadyDefined of string * Type.t
+exception VariableAlreadyDefined of string
+exception AlreadyDeclared of string
+
 type javamattribute = {
   atype: Type.t;
   loc: Location.t;
@@ -74,11 +78,21 @@ let env_astmethod env (amethod: AST.astmethod) =
     match argstype with
     | [] -> args_env
     | h::t -> (
+      if (Env.mem args_env h.pident) then (
+        let arg_type = Env.find args_env h.pident in
+        if arg_type = h.ptype then
+          raise (VariableAlreadyDefined(h.pident));
+      );
       let args_env_tmp = Env.define args_env h.pident h.ptype in
       get_args_type t args_env_tmp
     )
   in
   let args_env_tmp = get_args_type amethod.margstype env_args in
+  if (Env.mem env amethod.mname) then (
+    let method_ = Env.find env amethod.mname in
+    if Env.values method_.args_types = Env.values args_env_tmp then
+      raise (MethodAlreadyDefined(amethod.mname, amethod.mreturntype));
+  );
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
     args_types = args_env_tmp;

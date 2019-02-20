@@ -13,6 +13,8 @@ let define env n t =
 
 let iter f = Hashtbl.iter (fun s i -> f (s,i))
 
+let values env = Hashtbl.fold (fun k v acc -> v :: acc) env []
+
 let rec print_tab t =
   if t = 0 then
       ()
