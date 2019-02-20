@@ -20,6 +20,7 @@ type t =
   | Ref of ref_type
 
 let object_type = { tpath = [] ; tid = "Object" }
+let string_type = { tpath = [] ; tid = "String" }
 	     
 let rec array_param = function
   | 0 -> ""

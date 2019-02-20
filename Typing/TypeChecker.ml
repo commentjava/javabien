@@ -1,23 +1,22 @@
-exception ExcpectedNumeric of Type.primitive
-exception ExcpectedBoolean of Type.primitive
+exception WrongType of Type.t
 
 let ensure_numeric_type (ptype: Type.primitive) =
   match ptype with
-  | Boolean -> raise(ExcpectedNumeric ptype)(* Inheritance not checked *)
+  | Type.Boolean -> raise(WrongType (Type.Primitive(ptype)))(* Inheritance not checked *)
   | _ -> ()
 ;;
 
 let ensure_boolean_type (ptype: Type.primitive) =
   match ptype with
-  | Boolean -> () (* Inheritance not checked *)
-  | _ -> raise(ExcpectedBoolean ptype)
+  | Type.Boolean -> () (* Inheritance not checked *)
+  | _ -> raise(WrongType (Type.Primitive(ptype)))
 ;;
 
 let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
   let convertible_ref = ["Boolean"; "Byte"; "Character"; "Short"; "Integer"; "Long"; "Float"; "Double"] in
   match type_ with
   | Type.Primitive(p) -> p
-  | Type.Ref(ref_type) when (List.length ref_type.tpath) == 0 && (List.mem ref_type.tid convertible_ref) ->
+  | Type.Ref(ref_type) when (List.length ref_type.tpath) == 0 && (List.mem ref_type.tid convertible_ref) -> ( 
     match ref_type.tid with (* TODO this doesn't handle types that inherit from the convertible ones *)
     | "Boolean" -> Type.Boolean
     | "Byte" -> Type.Byte
@@ -27,7 +26,8 @@ let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
     | "Long" -> Type.Long
     | "Float" -> Type.Float
     | "Doube" -> Type.Double
-  (* TODO null case and unmatched cases *)
+    )
+  | _ -> raise(WrongType type_)
 ;;
 
 let binary_numeric_promotion (type_1: Type.t) (type_2: Type.t) = (* 5.6.2 *)
@@ -45,73 +45,94 @@ let binary_numeric_promotion (type_1: Type.t) (type_2: Type.t) = (* 5.6.2 *)
 
 (*** Ast nodes checks ***)
 
+(* value *)
+let check_value env (value: AST.value) =
+  match value with
+  | String(s) -> Type.Ref(Type.string_type)
+  | Int(s) -> Type.Primitive(Type.Int)
+  | Float(s) -> Type.Primitive(Type.Float)
+  | Char(s) -> Type.Primitive(Type.Char)
+  (*| Null -> Type.Ref({Everyting???})*)
+  | Boolean(s) -> Type.Primitive(Type.Boolean)
+;;
+
 (* expression *)
 (* TODO String operations aren't take into account !!! *)
 (* From the jls: If the type of either operand of a + operator is String, then the operation isstring concatenation *)
-let rec check_op env (e1: AST.expression) (op: AST.infix_op) (e2: AST.expression) =
-  match op with
-  (* | Op_cor -> Type.Boolean TODO check expression types *)
-  (* | Op_cand -> Type.Boolean TODO check expression types *)
-  (* | Op_or -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_and -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_xor -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_eq -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_ne -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_gt -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_lt -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_ge -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_le -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_shl -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_shr -> Type.Int TODO check expression types and fix returned type *)
-  (* | Op_shrr -> Type.Int TODO check expression types and fix returned type *)
-  | Op_add -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-  | Op_sub -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-  | Op_mul -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-  | Op_div -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-  | Op_mod -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-and check_expression env (expression: AST.expression) =
+
+let rec check_expression env (expression: AST.expression) =
+  let check_exp_op env (e1: AST.expression) (op: AST.infix_op) (e2: AST.expression) =
+    let check_exp_op_add e1 e2 = 
+      let type_e1 = check_expression env e1 in
+      let type_e2 = check_expression env e2 in
+      match (type_e1, type_e2) with
+      | _, Type.Ref(tr) when tr == Type.string_type -> Type.Ref(Type.string_type)
+      | Type.Ref(tr), _ when tr == Type.string_type -> Type.Ref(Type.string_type)
+      | _, _ -> binary_numeric_promotion type_e1 type_e2
+    in
+    match op with
+    (* | Op_cor -> Type.Boolean TODO check expression types *)
+    (* | Op_cand -> Type.Boolean TODO check expression types *)
+    (* | Op_or -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_and -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_xor -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_eq -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_ne -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_gt -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_lt -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_ge -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_le -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_shl -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_shr -> Type.Int TODO check expression types and fix returned type *)
+    (* | Op_shrr -> Type.Int TODO check expression types and fix returned type *)
+    | Op_add -> check_exp_op_add e1 e2;
+    | Op_sub -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
+    | Op_mul -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
+    | Op_div -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
+    | Op_mod -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
+  in
   let expression = expression.edesc in
   match expression with
-  (*| New of string option * string list * expression list *)
-  (*| NewArray of Type.t * (expression option) list * expression option*)
-  (*| Call of expression option * string * expression list*)
-  (*| Attr of expression * string*)
-  (*| If of expression * expression * expression*)
-  (*| Val of value*)
-  (*| Name of string*)
-  (*| ArrayInit of expression list*)
-  (*| Array of expression * (expression option) list*)
-  (*| AssignExp of expression * assign_op * expression*)
-  (*| Post of expression * postfix_op*)
-  (*| Pre of prefix_op * expression*)
-  | Op(e1, op, e2) -> check_op env e1 op e2
-  (*| CondOp of expression * expression * expression*)
-  (*| Cast of Type.t * expression*)
-  (*| Type of Type.t*)
-  (*| ClassOf of Type.t *)
-  (*| Instanceof *)
+  | New(s, sl, e) -> raise(Failure "Expression new not implemented")
+  | NewArray(t, e, e2) -> raise(Failure "Expression newarray not implemented")
+  | Call(e, s, e2) -> raise(Failure "Expression call not implemented")
+  | Attr(e, s) -> raise(Failure "Expression attr not implemented")
+  | If(e, e2, e3) -> raise(Failure "Expression if not implemented")
+  | Val(v) -> check_value env v
+  | Name(s) -> raise(Failure "Expression name not implemented")
+  | ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
+  | Array(e, es) -> raise(Failure "Expression array not implemented")
+  | AssignExp(e, o, e2) -> raise(Failure "Expression assignexp not implemented")
+  | Post(e, o) -> raise(Failure "Expression post not implemented")
+  | Pre(o, e) -> raise(Failure "Expression pre not implemented")
+  | Op(e1, op, e2) -> check_exp_op env e1 op e2
+  | CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented")
+  | Cast(t, e) -> raise(Failure "Expression cast not implemented")
+  | Type(t) -> raise(Failure "Expression type not implemented")
+  | ClassOf(t) -> raise(Failure "Expression classof not implemented")
+  | Instanceof(e, t) -> raise(Failure "Expression instanceof not implemented")
   | VoidClass -> Type.Void
 ;;
 
 (* statement *)
 let check_statement env (statement: AST.statement) =
   match statement with
-  (*| VarDecl of (Type.t * string * expression option) list *)
-  (*| Block of statement list *)
-  (*| Nop *)
-  (*| While of expression * statement *)
-  (*| For of (Type.t option * string * expression option) list * expression option * expression list * statement *)
-  (*| If of expression * statement * statement option *)
-  (*| Return of expression option *)
-  (*| Throw of expression *)
-  (*| Try of statement list * (argument * statement list) list * statement list *)
+  | VarDecl(l) -> raise(Failure "Statement vardecl not implemented")
+  | Block(s) -> raise(Failure "Statement block not implemented")
+  | Nop -> raise(Failure "Statement nop not implemented")
+  | While(e, s) -> raise(Failure "Statement while not implemented")
+  | For(a, e, e2, s) -> raise(Failure "Statement for not implemented")
+  | If(e, s, s2) -> raise(Failure "Statement if not implemented")
+  | Return(e) -> raise(Failure "Statement return not implemented")
+  | Throw(e) -> raise(Failure "Statement throw not implemented")
+  | Try(s, a, s2) -> raise(Failure "Statement try not implemented")
   | Expr(e) -> check_expression env e; ()
 ;;
 
 (* astmethod *)
 let check_astmethod env (astmethod: AST.astmethod) =
   (* Check other fields than mdbody *)
-  List.iter (check_statement env) astmethod.mbody (* env modification are not inplace, this won't allow variable definition in method *)
+  List.iter (check_statement env) astmethod.mbody
 ;;
 
 (* astclass *)
@@ -123,7 +144,7 @@ let check_astclass env (astclass: AST.astclass) =
 (* type_info *)
 let check_type_info env (type_info: AST.type_info) =
   match type_info with
-  | Class(c) -> check_astclass c
+  | Class(c) -> check_astclass env c
   | Inter -> raise(Failure "Interface not implemented")
 ;;
 
