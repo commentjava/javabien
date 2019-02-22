@@ -21,4 +21,4 @@ val iter : ('a * 'b -> unit) -> ('a,'b) t -> unit
 val values :  ('a,'b) t -> 'b list
 
 (* A function to print a hash table *)
-val print : string -> ('a -> unit) -> ('b -> unit) -> ('a, 'b) t -> int -> unit
+val print : string -> ('a -> unit) -> ('b -> string -> unit) -> ('a, 'b) t -> string -> unit

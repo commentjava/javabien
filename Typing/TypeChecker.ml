@@ -181,7 +181,8 @@ let check_t env (ast: AST.t) =
 let rec typing (ast: AST.t) =
   let env = TypingEnv.create_env ast in
   TypingEnv.print_classes_env env.classes_env;
+  print_newline ();
   check_t env ast;
-  print_string "Type checking \x1b[0;32mok\x1b[0m\n";
+  print_string "\nType checking \x1b[0;32mok\x1b[0m\n";
   ast (* For now don't change the ast, in the future it might be changed to include to be a typed ast *)
 ;;

@@ -15,32 +15,36 @@ let iter f = Hashtbl.iter (fun s i -> f (s,i))
 
 let values env = Hashtbl.fold (fun k v acc -> v :: acc) env []
 
-let rec print_tab t =
-  if t = 0 then
-      ()
-  else
-      begin
-          print_string "  ";
-          print_tab (t - 1)
-      end
+let whitespace = "   " ;;
+let branche = "│  " ;;
+let colorRed = "\x1b[0;31m" ;;
+let colorGreen = "\x1b[0;32m" ;;
+let colorLightGreen = "\x1b[1;32m" ;;
+let colorLightCyan = "\x1b[1;36m" ;;
+let colorWhite = "\x1b[1;37m" ;;
+let colorReset = "\x1b[0m" ;;
 
-let print name print_key print_val env tab =
-  if (Hashtbl.length env > 0) then
+let incr c =
+  c + 1
+;;
+
+let print name print_key print_val env depth =
+  let tbl_length = Hashtbl.length env in
+  if (tbl_length > 0) then
     begin
       if (name <> "") then (
-        print_tab tab;
-        print_string (name^": ");
+        print_string (colorWhite ^ name ^ colorReset);
         print_newline()
       );
-      let first = ref true in
+      let idx = ref 0 in
       Hashtbl.iter
-	(fun key value ->
-	  (* if !first then
-	    first := false
-    else *)
-      print_tab (tab + 1);
+  (fun key value ->
+      idx := incr !idx;
+      let d_key = if !idx == tbl_length then "└─ " else "├─ " in
+      let d_value = if !idx == tbl_length then whitespace else branche in
+      print_string (depth ^ d_key);
       print_key key;
       print_string ": ";
-      print_val value)
+      print_val value (depth ^ d_value))
     env
     end

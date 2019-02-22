@@ -31,46 +31,58 @@ type tc_env = {
 }
 
 (*******  Env Printing  ********)
+let colorWhite = "\x1b[1;37m" ;;
+let colorReset = "\x1b[0m" ;;
+let colorGreen = "\x1b[0;32m" ;;
 
-
-let print_type t =
-  print_string (Type.stringOf t);
-  print_newline()
+let print_white_string s =
+  print_string (colorWhite ^ s ^ colorReset)
 ;;
 
-let print_attribute (a: javamattribute) =
-  print_type a.atype
+let print_green_string s =
+  print_string (colorGreen ^ s ^ colorReset)
 ;;
 
-let print_method (m: javamethod) =
-  print_type m.return_type;
-  Env.print "args" print_string print_type m.args_types 4
+let print_type t depth =
+  print_green_string (Type.stringOf t);
 ;;
 
-let print_methods methods =
-  Env.print "Methods" print_string print_method methods 2
+let print_attribute (a: javamattribute) depth =
+  print_type a.atype depth
 ;;
 
-let print_attributes attributes =
-  Env.print "Attributes" print_string print_attribute attributes 2
+let print_method (m: javamethod) depth =
+  print_newline ();
+  print_string (depth ^ "├─ " ^ colorWhite ^ "return type: "^ colorReset );
+  print_type m.return_type depth;
+  print_newline ();
+  print_string (depth ^ "└─ ");
+  Env.print "args" print_white_string print_type m.args_types (depth ^ "   ")
 ;;
 
-let print_javaclass (v: javaclass) =
-  print_newline();
-  print_methods v.methods;
-  print_newline();
-  print_attributes v.attributes;
-  print_newline();
+let print_methods methods depth =
+  Env.print "Methods" print_white_string print_method methods depth
+;;
+
+let print_attributes attributes depth =
+  Env.print "Attributes" print_white_string print_attribute attributes depth
+;;
+
+let print_javaclass (v: javaclass) depth =
+  print_string ("\n" ^ depth ^ "├─ ");
+  print_methods v.methods (depth ^ "│  ");
+  print_string ("\n" ^ depth ^ "└─ ");
+  print_attributes v.attributes (depth ^ "   ");
   (* Location.print v.loc;
   print_newline() *)
 ;;
 
 let print_classes_env (c_env: classes_env) = 
-  Env.print "Class env" print_string print_javaclass c_env 0
+  Env.print ("Class env") print_white_string print_javaclass c_env "";
 ;;
 
 let print_exec_env (e_env: exec_env) = 
-  Env.print "Exec env" print_string print_type e_env 0
+  Env.print "Exec env" print_string print_type e_env ""
 ;;
 
 let print_tc_env (env: tc_env) = 
@@ -161,7 +173,7 @@ let create_classes_env (ast: AST.t) =
 let rec exec_add_arguments (exec_env: exec_env) (arguments: AST.argument list) =
   match arguments with
   | [] -> exec_env
-  | h::t -> print_exec_env exec_env; exec_add_arguments (Env.define exec_env h.pident h.ptype) t (* TODO check if pident is already in the env *)
+  | h::t -> exec_add_arguments (Env.define exec_env h.pident h.ptype) t (* TODO check if pident is already in the env *)
 ;;
 
 (*******  TC Env  ********)
