@@ -13,7 +13,7 @@ class A {
 		return 3;
 	}
 
-	public int method1(float b) {
+	public int method1(float b, float c) {
 		return 3;
 	}
 }

@@ -45,19 +45,19 @@ let print_green_string s =
 
 let print_type t depth =
   print_green_string (Type.stringOf t);
+  print_newline ()
 ;;
 
 let print_attribute (a: javamattribute) depth =
-  print_type a.atype depth
+  print_type a.atype depth;
 ;;
 
 let print_method (m: javamethod) depth =
   print_newline ();
   print_string (depth ^ "├─ " ^ colorWhite ^ "return type: "^ colorReset );
   print_type m.return_type depth;
-  print_newline ();
   print_string (depth ^ "└─ ");
-  Env.print "args" print_white_string print_type m.args_types (depth ^ "   ")
+  Env.print "args" print_white_string print_type m.args_types (depth ^ "   ");
 ;;
 
 let print_methods methods depth =
@@ -77,15 +77,15 @@ let print_javaclass (v: javaclass) depth =
   print_newline() *)
 ;;
 
-let print_classes_env (c_env: classes_env) = 
+let print_classes_env (c_env: classes_env) =
   Env.print ("Class env") print_white_string print_javaclass c_env "";
 ;;
 
-let print_exec_env (e_env: exec_env) = 
+let print_exec_env (e_env: exec_env) =
   Env.print "Exec env" print_string print_type e_env ""
 ;;
 
-let print_tc_env (env: tc_env) = 
+let print_tc_env (env: tc_env) =
   print_string ("Current class: " ^ env.current_class ^ "\n");
   print_classes_env env.classes_env;
   print_exec_env env.exec_env
@@ -177,7 +177,7 @@ let rec exec_add_arguments (exec_env: exec_env) (arguments: AST.argument list) =
 ;;
 
 let add_variable (env: tc_env) (varname: string) (vartype: Type.t) =
-  try 
+  try
     Env.find env.exec_env varname;
     raise(VariableAlreadyDefined varname)
   with Not_found -> (
@@ -186,7 +186,7 @@ let add_variable (env: tc_env) (varname: string) (vartype: Type.t) =
 ;;
 
 (*******  TC Env  ********)
-let get_var_type (env: tc_env) (varname: string) = 
+let get_var_type (env: tc_env) (varname: string) =
   try
     Env.find env.exec_env varname
   with Not_found -> (
