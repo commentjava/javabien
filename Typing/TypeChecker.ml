@@ -1,15 +1,15 @@
-exception WrongType of Type.t
+exception WrongType of string
 
 let ensure_numeric_type (ptype: Type.primitive) =
   match ptype with
-  | Type.Boolean -> raise(WrongType (Type.Primitive(ptype)))(* Inheritance not checked *)
+  | Type.Boolean -> raise(WrongType "Expected a numeric")(* TODO Inheritance not checked *)
   | _ -> ()
 ;;
 
 let ensure_boolean_type (ptype: Type.primitive) =
   match ptype with
-  | Type.Boolean -> () (* Inheritance not checked *)
-  | _ -> raise(WrongType (Type.Primitive(ptype)))
+  | Type.Boolean -> () (* TODO Inheritance not checked *)
+  | _ -> raise(WrongType "Expected a boolean")
 ;;
 
 let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
@@ -27,7 +27,7 @@ let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
     | "Float" -> Type.Float
     | "Doube" -> Type.Double
     )
-  | _ -> raise(WrongType type_)
+  | _ -> raise(WrongType "Can't be unboxed")
 ;;
 
 let binary_numeric_promotion (type_1: Type.t) (type_2: Type.t) = (* 5.6.2 *)
@@ -48,18 +48,15 @@ let binary_numeric_promotion (type_1: Type.t) (type_2: Type.t) = (* 5.6.2 *)
 (* value *)
 let check_value env (value: AST.value) =
   match value with
-  | String(s) -> Type.Ref(Type.string_type)
-  | Int(s) -> Type.Primitive(Type.Int)
-  | Float(s) -> Type.Primitive(Type.Float)
-  | Char(s) -> Type.Primitive(Type.Char)
+  | AST.String(s) -> Type.Ref(Type.string_type)
+  | AST.Int(s) -> Type.Primitive(Type.Int)
+  | AST.Float(s) -> Type.Primitive(Type.Float)
+  | AST.Char(s) -> Type.Primitive(Type.Char)
   (*| Null -> Type.Ref({Everyting???})*)
-  | Boolean(s) -> Type.Primitive(Type.Boolean)
+  | AST.Boolean(s) -> Type.Primitive(Type.Boolean)
 ;;
 
 (* expression *)
-(* TODO String operations aren't take into account !!! *)
-(* From the jls: If the type of either operand of a + operator is String, then the operation isstring concatenation *)
-
 let rec check_expression env (expression: AST.expression) =
   let check_exp_op env (e1: AST.expression) (op: AST.infix_op) (e2: AST.expression) =
     let check_exp_op_add e1 e2 = 
@@ -93,40 +90,52 @@ let rec check_expression env (expression: AST.expression) =
   in
   let expression = expression.edesc in
   match expression with
-  | New(s, sl, e) -> raise(Failure "Expression new not implemented")
-  | NewArray(t, e, e2) -> raise(Failure "Expression newarray not implemented")
-  | Call(e, s, e2) -> raise(Failure "Expression call not implemented")
-  | Attr(e, s) -> raise(Failure "Expression attr not implemented")
-  | If(e, e2, e3) -> raise(Failure "Expression if not implemented")
-  | Val(v) -> check_value env v
-  | Name(s) -> raise(Failure "Expression name not implemented")
-  | ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
-  | Array(e, es) -> raise(Failure "Expression array not implemented")
-  | AssignExp(e, o, e2) -> raise(Failure "Expression assignexp not implemented")
-  | Post(e, o) -> raise(Failure "Expression post not implemented")
-  | Pre(o, e) -> raise(Failure "Expression pre not implemented")
-  | Op(e1, op, e2) -> check_exp_op env e1 op e2
-  | CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented")
-  | Cast(t, e) -> raise(Failure "Expression cast not implemented")
-  | Type(t) -> raise(Failure "Expression type not implemented")
-  | ClassOf(t) -> raise(Failure "Expression classof not implemented")
-  | Instanceof(e, t) -> raise(Failure "Expression instanceof not implemented")
-  | VoidClass -> Type.Void
+  | AST.New(s, sl, e) -> raise(Failure "Expression new not implemented")
+  | AST.NewArray(t, e, e2) -> raise(Failure "Expression newarray not implemented")
+  | AST.Call(e, s, e2) -> raise(Failure "Expression call not implemented")
+  | AST.Attr(e, s) -> raise(Failure "Expression attr not implemented")
+  | AST.If(e, e2, e3) -> raise(Failure "Expression if not implemented")
+  | AST.Val(v) -> check_value env v
+  | AST.Name(s) -> raise(Failure "Expression name not implemented")
+  | AST.ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
+  | AST.Array(e, es) -> raise(Failure "Expression array not implemented")
+  | AST.AssignExp(e, o, e2) -> raise(Failure "Expression assignexp not implemented")
+  | AST.Post(e, o) -> raise(Failure "Expression post not implemented")
+  | AST.Pre(o, e) -> raise(Failure "Expression pre not implemented")
+  | AST.Op(e1, op, e2) -> check_exp_op env e1 op e2
+  | AST.CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented")
+  | AST.Cast(t, e) -> raise(Failure "Expression cast not implemented")
+  | AST.Type(t) -> raise(Failure "Expression type not implemented")
+  | AST.ClassOf(t) -> raise(Failure "Expression classof not implemented")
+  | AST.Instanceof(e, t) -> raise(Failure "Expression instanceof not implemented")
+  | AST.VoidClass -> Type.Void
 ;;
 
 (* statement *)
-let check_statement env (statement: AST.statement) =
+let rec check_statement env (statement: AST.statement) =
+  let check_statement_if env condition if_statement else_statement = 
+    let condition_type = unboxing_conversion (check_expression env condition)
+    in
+    match condition_type with
+    | Type.Boolean -> (
+      check_statement env if_statement;
+      match else_statement with
+      | Some(else_s) -> check_statement env else_s
+      | _ -> ()
+    )
+    | _ -> raise(WrongType "Expected a boolean in if")
+  in
   match statement with
-  | VarDecl(l) -> raise(Failure "Statement vardecl not implemented")
-  | Block(s) -> raise(Failure "Statement block not implemented")
-  | Nop -> raise(Failure "Statement nop not implemented")
-  | While(e, s) -> raise(Failure "Statement while not implemented")
-  | For(a, e, e2, s) -> raise(Failure "Statement for not implemented")
-  | If(e, s, s2) -> raise(Failure "Statement if not implemented")
-  | Return(e) -> raise(Failure "Statement return not implemented")
-  | Throw(e) -> raise(Failure "Statement throw not implemented")
-  | Try(s, a, s2) -> raise(Failure "Statement try not implemented")
-  | Expr(e) -> check_expression env e; ()
+  | AST.VarDecl(l) -> raise(Failure "Statement vardecl not implemented")
+  | AST.Block(s) -> List.iter (check_statement env) s (* TODO env scope *)
+  | AST.Nop -> ()
+  | AST.While(e, s) -> raise(Failure "Statement while not implemented")
+  | AST.For(a, e, e2, s) -> raise(Failure "Statement for not implemented")
+  | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s; ()
+  | AST.Return(e) -> raise(Failure "Statement return not implemented")
+  | AST.Throw(e) -> raise(Failure "Statement throw not implemented")
+  | AST.Try(s, a, s2) -> raise(Failure "Statement try not implemented")
+  | AST.Expr(e) -> check_expression env e; ()
 ;;
 
 (* astmethod *)
@@ -168,8 +177,9 @@ let check_t env (ast: AST.t) =
 ;;
 
 let rec typing (ast: AST.t) =
-  let env = TypingEnv.create_env ast in
-  Env.print "Env" print_string TypingEnv.print_javaclass env 0;
-  check_t env ast;
-  ast (* For now don't change the ast, in the future it might be changed to include types informations *)
+  let class_env = TypingEnv.create_class_env ast in
+  Env.print "Class env" print_string TypingEnv.print_javaclass class_env 0;
+  check_t class_env ast;
+  print_string "Type checking \x1b[0;32mok\x1b[0m";
+  ast (* For now don't change the ast, in the future it might be changed to include to be a typed ast *)
 ;;
