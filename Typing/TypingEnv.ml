@@ -176,6 +176,15 @@ let rec exec_add_arguments (exec_env: exec_env) (arguments: AST.argument list) =
   | h::t -> exec_add_arguments (Env.define exec_env h.pident h.ptype) t (* TODO check if pident is already in the env *)
 ;;
 
+let add_variable (env: tc_env) (varname: string) (vartype: Type.t) =
+  try 
+    Env.find env.exec_env varname;
+    raise(VariableAlreadyDefined varname)
+  with Not_found -> (
+    { env with exec_env = (Env.define env.exec_env varname vartype) }
+  )
+;;
+
 (*******  TC Env  ********)
 let get_var_type (env: tc_env) (varname: string) = 
   try

@@ -99,15 +99,19 @@ let rec check_expression env (expression: AST.expression) =
   | AST.Name(s) -> TypingEnv.get_var_type env s
   | AST.ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
   | AST.Array(e, es) -> raise(Failure "Expression array not implemented")
-  | AST.AssignExp(e, o, e2) -> raise(Failure "Expression assignexp not implemented")
+  | AST.AssignExp(e, o, e2) -> (
+    match ((check_expression env e) = (check_expression env e2))  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed *)
+    | true -> Type.Void
+    | false -> raise(WrongType "Can't assign a different type") (* TODO Inheritance *)
+  )
   | AST.Post(e, o) -> raise(Failure "Expression post not implemented")
   | AST.Pre(o, e) -> raise(Failure "Expression pre not implemented")
   | AST.Op(e1, op, e2) -> check_exp_op env e1 op e2
-  | AST.CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented")
-  | AST.Cast(t, e) -> raise(Failure "Expression cast not implemented")
-  | AST.Type(t) -> raise(Failure "Expression type not implemented")
+  | AST.CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented") (* section 15.25 *)
+  | AST.Cast(t, e) -> raise(Failure "Expression cast not implemented") (* TODO Inheritance *)
+  | AST.Type(t) -> t
   | AST.ClassOf(t) -> raise(Failure "Expression classof not implemented")
-  | AST.Instanceof(e, t) -> raise(Failure "Expression instanceof not implemented")
+  | AST.Instanceof(e, t) -> Type.Primitive(Type.Boolean)
   | AST.VoidClass -> Type.Void
 ;;
 
@@ -121,28 +125,33 @@ let rec check_statement env (statement: AST.statement) =
       check_statement env if_statement;
       match else_statement with
       | Some(else_s) -> check_statement env else_s
-      | _ -> ()
+      | _ -> env
     )
     | _ -> raise(WrongType "Expected a boolean in if")
   in
   match statement with
-  | AST.VarDecl(l) -> raise(Failure "Statement vardecl not implemented")
-  | AST.Block(s) -> List.iter (check_statement env) s (* TODO env scope *)
-  | AST.Nop -> ()
-  | AST.While(e, s) -> raise(Failure "Statement while not implemented")
+  | AST.VarDecl(l) -> List.fold_left (fun env (vartype, varname, varinit) -> TypingEnv.add_variable env varname vartype) env l
+  | AST.Block(s) -> check_statement_list env s
+  | AST.Nop -> env
+  | AST.While(c, s) -> raise(Failure "Statement while not implemented")
   | AST.For(a, e, e2, s) -> raise(Failure "Statement for not implemented")
-  | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s; ()
+  | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s
   | AST.Return(e) -> raise(Failure "Statement return not implemented")
   | AST.Throw(e) -> raise(Failure "Statement throw not implemented")
   | AST.Try(s, a, s2) -> raise(Failure "Statement try not implemented")
-  | AST.Expr(e) -> check_expression env e; ()
+  | AST.Expr(e) -> check_expression env e; env
+and check_statement_list env (statements: AST.statement list) =
+    match statements with
+    | [] -> env
+    | h::t -> check_statement_list (check_statement env h) t
 ;;
 
 (* astmethod *)
 let check_astmethod (env: TypingEnv.tc_env) (astmethod: AST.astmethod) =
   (* Check other fields than mdbody *)
   let env = { env with exec_env = (TypingEnv.exec_add_arguments env.exec_env astmethod.margstype) } in
-  List.iter (check_statement env) astmethod.mbody
+  check_statement_list env astmethod.mbody;
+  ()
 ;;
 
 (* astclass *)
