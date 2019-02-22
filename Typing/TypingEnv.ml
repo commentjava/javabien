@@ -2,6 +2,8 @@ exception MethodAlreadyDefined of string * Type.t
 exception VariableAlreadyDefined of string
 exception AlreadyDeclared of string
 
+
+(*******  Env Printing  ********)
 type javamattribute = {
   atype: Type.t;
   loc: Location.t;
@@ -19,6 +21,14 @@ type javaclass = {
   loc : Location.t;
 }
 
+type exec_env = (string, Type.t) Env.t
+type classes_env = (string, javaclass) Env.t
+
+type tc_env = {
+  classes_env: classes_env;
+  exec_env: exec_env;
+  current_class: string;
+}
 
 (*******  Env Printing  ********)
 
@@ -55,8 +65,21 @@ let print_javaclass (v: javaclass) =
   print_newline() *)
 ;;
 
+let print_classes_env (c_env: classes_env) = 
+  Env.print "Class env" print_string print_javaclass c_env 0
+;;
 
-(*******  Env Creating  ********)
+let print_exec_env (e_env: exec_env) = 
+  Env.print "Exec env" print_string print_type e_env 0
+;;
+
+let print_tc_env (env: tc_env) = 
+  print_string ("Current class: " ^ env.current_class ^ "\n");
+  print_classes_env env.classes_env;
+  print_exec_env env.exec_env
+;;
+
+(*******  Class Env Creating  ********)
 
 
 let env_astattribute env (attribute: AST.astattribute) =
@@ -128,7 +151,35 @@ let rec env_asttype_list env asttype_list =
   | h::t -> env_asttype_list (env_asttype env h) t
 ;;
 
-let create_env (ast: AST.t) =
+let create_classes_env (ast: AST.t) =
   let env = Env.initial() in
   env_asttype_list env ast.type_list
+;;
+
+(*******  Exec Env  ********)
+
+let rec exec_add_arguments (exec_env: exec_env) (arguments: AST.argument list) =
+  match arguments with
+  | [] -> exec_env
+  | h::t -> print_exec_env exec_env; exec_add_arguments (Env.define exec_env h.pident h.ptype) t (* TODO check if pident is already in the env *)
+;;
+
+(*******  TC Env  ********)
+let get_var_type (env: tc_env) (varname: string) = 
+  try
+    Env.find env.exec_env varname
+  with Not_found -> (
+    let current_javaclass = Env.find env.classes_env env.current_class in
+    let attr = Env.find current_javaclass.attributes varname in
+    attr.atype
+  )
+;;
+
+let create_env (ast: AST.t) =
+  let classes_env = create_classes_env ast in
+  {
+    classes_env = classes_env;
+    exec_env = Env.initial();
+    current_class = ""
+  }
 ;;

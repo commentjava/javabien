@@ -96,7 +96,7 @@ let rec check_expression env (expression: AST.expression) =
   | AST.Attr(e, s) -> raise(Failure "Expression attr not implemented")
   | AST.If(e, e2, e3) -> raise(Failure "Expression if not implemented")
   | AST.Val(v) -> check_value env v
-  | AST.Name(s) -> raise(Failure "Expression name not implemented")
+  | AST.Name(s) -> TypingEnv.get_var_type env s
   | AST.ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
   | AST.Array(e, es) -> raise(Failure "Expression array not implemented")
   | AST.AssignExp(e, o, e2) -> raise(Failure "Expression assignexp not implemented")
@@ -139,8 +139,9 @@ let rec check_statement env (statement: AST.statement) =
 ;;
 
 (* astmethod *)
-let check_astmethod env (astmethod: AST.astmethod) =
+let check_astmethod (env: TypingEnv.tc_env) (astmethod: AST.astmethod) =
   (* Check other fields than mdbody *)
+  let env = { env with exec_env = (TypingEnv.exec_add_arguments env.exec_env astmethod.margstype) } in
   List.iter (check_statement env) astmethod.mbody
 ;;
 
@@ -158,8 +159,9 @@ let check_type_info env (type_info: AST.type_info) =
 ;;
 
 (* asttype *)
-let check_asttype env (asttype: AST.asttype) =
+let check_asttype (env: TypingEnv.tc_env) (asttype: AST.asttype) =
   (* Check other fields than info *)
+  let env = { env with current_class = asttype.id} in
   check_type_info env asttype.info
 ;;
 
@@ -177,9 +179,9 @@ let check_t env (ast: AST.t) =
 ;;
 
 let rec typing (ast: AST.t) =
-  let class_env = TypingEnv.create_class_env ast in
-  Env.print "Class env" print_string TypingEnv.print_javaclass class_env 0;
-  check_t class_env ast;
-  print_string "Type checking \x1b[0;32mok\x1b[0m";
+  let env = TypingEnv.create_env ast in
+  TypingEnv.print_classes_env env.classes_env;
+  check_t env ast;
+  print_string "Type checking \x1b[0;32mok\x1b[0m\n";
   ast (* For now don't change the ast, in the future it might be changed to include to be a typed ast *)
 ;;
