@@ -1,8 +1,3 @@
-exception MethodAlreadyDefined of string * Type.t
-exception VariableAlreadyDefined of string
-exception AlreadyDeclared of string
-
-
 (*******  Env Printing  ********)
 type javamattribute = {
   atype: Type.t;
@@ -11,12 +6,12 @@ type javamattribute = {
 
 type javamethod = {
   return_type: Type.t;
-  args_types: (string, Type.t) Env.t;
+  args_types: (string, Type.t) Env.t; (* params order is not preserved, must be changed *)
   loc : Location.t;
 }
 
 type javaconst = {
-  args_types: (string, Type.t) Env.t;
+  args_types: (string, Type.t) Env.t; (* params order is not preserved, must be changed *)
   loc : Location.t;
 }
 
@@ -50,8 +45,7 @@ let print_green_string s =
 ;;
 
 let print_type t depth =
-  print_green_string (Type.stringOf t);
-  print_newline ()
+  print_green_string (Type.stringOf t)
 ;;
 
 let print_attribute (a: javamattribute) depth =
@@ -62,6 +56,7 @@ let print_method (m: javamethod) depth =
   print_newline ();
   print_string (depth ^ "├─ " ^ colorWhite ^ "return type: "^ colorReset );
   print_type m.return_type depth;
+  print_newline ();
   print_string (depth ^ "└─ ");
   Env.print "args" print_white_string print_type m.args_types (depth ^ "   ");
 ;;
@@ -70,12 +65,27 @@ let print_methods methods depth =
   Env.print "Methods" print_white_string print_method methods depth
 ;;
 
+let rec print_constructors consts depth =
+  print_newline();
+  match consts with
+  | [] -> ()
+  | h::t -> (
+    let branch = if ((List.length t) > 0) then "├─ " else "└─ " in
+    print_string (depth ^ branch);
+    Env.print "B" print_white_string print_type h.args_types (depth ^ "   ");
+    print_constructors t depth
+  )
+;;
+
 let print_attributes attributes depth =
   Env.print "Attributes" print_white_string print_attribute attributes depth
 ;;
 
 let print_javaclass (v: javaclass) depth =
   print_string ("\n" ^ depth ^ "├─ ");
+  print_string (colorWhite ^ "Constructors" ^ colorReset ^ ":");
+  print_constructors v.constructors (depth ^ "│  ");
+  print_string (depth ^ "├─ ");
   print_methods v.methods (depth ^ "│  ");
   print_string ("\n" ^ depth ^ "└─ ");
   print_attributes v.attributes (depth ^ "   ");
@@ -103,7 +113,7 @@ let print_tc_env (env: tc_env) =
 let env_astattribute env (attribute: AST.astattribute) =
   try
     Env.find env attribute.aname;
-    raise (AlreadyDeclared ("Attribute already defined " ^ attribute.aname))
+    raise (TypeExcept.AlreadyDeclared ("Attribute already defined " ^ attribute.aname))
   with Not_found -> (
     Env.define env attribute.aname {
       atype = attribute.atype;
@@ -125,7 +135,7 @@ let rec get_args_type (argstype: AST.argument list) args_env =
     if (Env.mem args_env h.pident) then (
       let arg_type = Env.find args_env h.pident in
       if arg_type = h.ptype then
-        raise (VariableAlreadyDefined(h.pident));
+        raise (TypeExcept.VariableAlreadyDefined(h.pident));
     );
     get_args_type t (Env.define args_env h.pident h.ptype)
   )
@@ -136,7 +146,7 @@ let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) =
   if (Env.mem env amethod.mname) then (
     let method_ = Env.find env amethod.mname in
     if Env.values method_.args_types = Env.values args_env then
-      raise (MethodAlreadyDefined(amethod.mname, amethod.mreturntype));
+      raise (TypeExcept.MethodAlreadyDefined(amethod.mname, amethod.mreturntype));
   );
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
@@ -163,7 +173,7 @@ let env_asttype (env: classes_env) (asttype: AST.asttype) =
   | AST.Class(astclass) ->
     let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
     let methods = env_astmethod_list (Env.initial()) astclass.cmethods in
-    let consts = env_astconstructor_list astclass.cconsts in
+    let consts = env_astconstructor_list astclass.cconsts in (* TODO default constructor MyClass() when no constructor is defined *)
     Env.define env asttype.id {
       attributes = attributes;
       methods = methods;
@@ -184,6 +194,42 @@ let create_classes_env (ast: AST.t) =
   env_asttype_list env ast.type_list
 ;;
 
+(* The following 3 functions: check_constructor_exist, function_return_type, and class_attr_type could be refactored *)
+let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list) =
+  let has_params (const: javaconst) = ()
+    (* TODO The hashmap make things more complicated than necessary, should we change args_type to be a list without params names or implement this function as is *)
+  in
+  match c_type with
+  | Ref(r) -> (
+    match r.tpath with
+    | [] -> (
+      let t_class = Env.find env.classes_env r.tid in
+      (* let const = Env.find has_params t_class.constructors in *)
+      c_type
+    )
+    | h::t -> c_type (*TODO nested references and nested classes *)
+  )
+  | _ -> raise(TypeExcept.WrongType "Only reference types have constructors")
+;;
+
+let function_return_type (env: tc_env) (c_type: Type.t) (params: Type.t list) =
+  Type.Ref(Type.object_type) (* TODO raise an error if the function doesn't exist and return the actual return type *)
+;;
+
+let class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
+  match c_type with
+  | Ref(r) -> (
+    match r.tpath with
+    | [] -> (
+      let t_class = Env.find env.classes_env r.tid in
+      let attr = Env.find t_class.attributes attr_name in
+      attr.atype
+    )
+    | h::t -> Type.Ref(Type.object_type) (*TODO nested references and nested classes *)
+  )
+  | _ -> raise(TypeExcept.WrongType "Can't access an attribute if it's not a reference type")
+;;
+
 (*******  Exec Env  ********)
 
 let rec exec_add_arguments (exec_env: exec_env) (arguments: AST.argument list) =
@@ -195,7 +241,7 @@ let rec exec_add_arguments (exec_env: exec_env) (arguments: AST.argument list) =
 let add_variable (env: tc_env) (varname: string) (vartype: Type.t) =
   try
     Env.find env.exec_env varname;
-    raise(VariableAlreadyDefined varname)
+    raise(TypeExcept.VariableAlreadyDefined varname)
   with Not_found -> (
     { env with exec_env = (Env.define env.exec_env varname vartype) }
   )

@@ -30,21 +30,17 @@ let incr c =
 
 let print name print_key print_val env depth =
   let tbl_length = Hashtbl.length env in
-  if (tbl_length > 0) then
-    begin
-      if (name <> "") then (
-        print_string (colorWhite ^ name ^ colorReset);
-        print_newline()
-      );
-      let idx = ref 0 in
-      Hashtbl.iter
-  (fun key value ->
-      idx := incr !idx;
-      let d_key = if !idx == tbl_length then "└─ " else "├─ " in
-      let d_value = if !idx == tbl_length then whitespace else branche in
-      print_string (depth ^ d_key);
-      print_key key;
-      print_string ": ";
-      print_val value (depth ^ d_value))
-    env
-    end
+  if (name <> "") then (
+    print_string (colorWhite ^ name ^ colorReset ^ ":");
+  );
+  let idx = ref 0 in
+  Hashtbl.iter (fun key value ->
+    idx := incr !idx;
+    print_newline();
+    let d_key = if !idx == tbl_length then "└─ " else "├─ " in
+    let d_value = if !idx == tbl_length then whitespace else branche in
+    print_string (depth ^ d_key);
+    print_key key;
+    print_string " ";
+    print_val value (depth ^ d_value))
+  env

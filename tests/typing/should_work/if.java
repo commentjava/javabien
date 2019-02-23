@@ -17,5 +17,9 @@ class A {
 		if (h) {
 			;;
 		}
+		if (true)
+			h = true;
+		else
+			h = false;
 	}
 }

@@ -23,7 +23,6 @@ type prefix_op =
   | Op_incr
   | Op_decr
   | Op_bnot
-  | Op_plus
 
 type assign_op =
   | Assign
@@ -229,7 +228,6 @@ let string_of_prefix_op = function
   | Op_incr -> "++"
   | Op_decr -> "--"
   | Op_bnot -> "~"
-  | Op_plus -> "+"
 
 
 let rec string_of_expression_desc = function

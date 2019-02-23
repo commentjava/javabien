@@ -1,15 +1,13 @@
-exception WrongType of string
-
 let ensure_numeric_type (ptype: Type.primitive) =
   match ptype with
-  | Type.Boolean -> raise(WrongType "Expected a numeric")(* TODO Inheritance not checked *)
-  | _ -> ()
+  | Type.Boolean -> raise(TypeExcept.WrongType "Expected a numeric")(* TODO Inheritance not checked *)
+  | _ -> ptype
 ;;
 
 let ensure_boolean_type (ptype: Type.primitive) =
   match ptype with
-  | Type.Boolean -> () (* TODO Inheritance not checked *)
-  | _ -> raise(WrongType "Expected a boolean")
+  | Type.Boolean -> Type.Boolean (* TODO Inheritance not checked *)
+  | _ -> raise(TypeExcept.WrongType "Expected a boolean")
 ;;
 
 let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
@@ -17,7 +15,7 @@ let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
   match type_ with
   | Type.Primitive(p) -> p
   | Type.Ref(ref_type) when (List.length ref_type.tpath) == 0 && (List.mem ref_type.tid convertible_ref) -> ( 
-    match ref_type.tid with (* TODO this doesn't handle types that inherit from the convertible ones *)
+    match ref_type.tid with (* TODO this doesn't handle types that inherit of convertible types *)
     | "Boolean" -> Type.Boolean
     | "Byte" -> Type.Byte
     | "Character" -> Type.Char
@@ -27,7 +25,7 @@ let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
     | "Float" -> Type.Float
     | "Doube" -> Type.Double
     )
-  | _ -> raise(WrongType "Can't be unboxed")
+  | _ -> raise(TypeExcept.WrongType "Can't be unboxed")
 ;;
 
 let binary_numeric_promotion (type_1: Type.t) (type_2: Type.t) = (* 5.6.2 *)
@@ -57,7 +55,7 @@ let check_value env (value: AST.value) =
 ;;
 
 (* expression *)
-let rec check_expression env (expression: AST.expression) =
+let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   let check_exp_op env (e1: AST.expression) (op: AST.infix_op) (e2: AST.expression) =
     let check_exp_op_add e1 e2 = 
       let type_e1 = check_expression env e1 in
@@ -88,24 +86,56 @@ let rec check_expression env (expression: AST.expression) =
     | Op_div -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
     | Op_mod -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
   in
+  let check_expression_if env condition if_exp else_exp =
+    let condition_type = unboxing_conversion (check_expression env condition)
+    in
+    match condition_type with
+    | Type.Boolean -> (
+      let type_if = check_expression env if_exp in
+      let type_else = check_expression env else_exp in
+      if (type_if = type_else) then type_if else raise(TypeExcept.WrongType "If expression must return the same type")
+    )
+    | _ -> raise(TypeExcept.WrongType "Expected a boolean in if")
+  in
   let expression = expression.edesc in
   match expression with
-  | AST.New(s, sl, e) -> raise(Failure "Expression new not implemented")
+  | AST.New(s, q_name, e) -> (
+    let new_type = Type.Ref({
+      tpath = (List.rev (List.tl (List.rev q_name)));
+      tid = (List.hd (List.rev q_name)) }
+      ) (* I feel like there is a better way to build that reference type *)
+    in
+    TypingEnv.check_constructor_exist env new_type (List.map (check_expression env) e)
+  ) (* TODO Class1.new Y() not handled, check if Some(s) *)
   | AST.NewArray(t, e, e2) -> raise(Failure "Expression newarray not implemented")
-  | AST.Call(e, s, e2) -> raise(Failure "Expression call not implemented")
-  | AST.Attr(e, s) -> raise(Failure "Expression attr not implemented")
-  | AST.If(e, e2, e3) -> raise(Failure "Expression if not implemented")
+  | AST.Call(eo, s, el) -> (
+    let e_type = match eo with
+      | Some(e) -> check_expression env e
+      | None -> Type.Ref({tpath = [] ; tid = env.current_class})
+    in
+    TypingEnv.function_return_type env e_type (List.map (check_expression env) el)
+  )
+  | AST.Attr(e, str) -> TypingEnv.class_attr_type env (check_expression env e) str
+  | AST.If(cond_e, if_e, else_e) -> check_expression_if env cond_e if_e else_e (* TODO How do we test that? *)
   | AST.Val(v) -> check_value env v
   | AST.Name(s) -> TypingEnv.get_var_type env s
   | AST.ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
-  | AST.Array(e, es) -> raise(Failure "Expression array not implemented")
+  | AST.Array(e, es) -> raise(Failure "Expression array not implemented") (* How can es be an option? li = other_li[] is parsed correctly but it seems like a bug *)
   | AST.AssignExp(e, o, e2) -> (
     match ((check_expression env e) = (check_expression env e2))  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
     | true -> Type.Void
-    | false -> raise(WrongType "Can't assign a different type") (* TODO Inheritance *)
+    | false -> raise(TypeExcept.WrongType "Can't assign a different type") (* TODO Inheritance *)
   )
-  | AST.Post(e, o) -> raise(Failure "Expression post not implemented")
-  | AST.Pre(o, e) -> raise(Failure "Expression pre not implemented")
+  | AST.Post(e, o) -> Type.Primitive(ensure_numeric_type (unboxing_conversion (check_expression env e)))
+  | AST.Pre(o, e) -> (
+    let exp_type = unboxing_conversion (check_expression env e) in
+    match o with
+    | Op_not -> Type.Primitive(ensure_boolean_type exp_type)
+    | Op_neg -> Type.Primitive(ensure_boolean_type exp_type)
+    | Op_incr -> Type.Primitive(ensure_numeric_type exp_type)
+    | Op_decr -> Type.Primitive(ensure_numeric_type exp_type)
+    | Op_bnot -> Type.Primitive(ensure_boolean_type exp_type)
+  )
   | AST.Op(e1, op, e2) -> check_exp_op env e1 op e2
   | AST.CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented") (* section 15.25 *)
   | AST.Cast(t, e) -> raise(Failure "Expression cast not implemented") (* TODO Inheritance *)
@@ -125,9 +155,9 @@ let rec check_statement env (statement: AST.statement) =
       check_statement env if_statement;
       match else_statement with
       | Some(else_s) -> check_statement env else_s
-      | _ -> env
+      | None -> env
     )
-    | _ -> raise(WrongType "Expected a boolean in if")
+    | _ -> raise(TypeExcept.WrongType "Expected a boolean in if")
   in
   match statement with
   | AST.VarDecl(l) -> (
