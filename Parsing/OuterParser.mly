@@ -187,7 +187,7 @@ memberDecl:
         }
     }
   | id=IDENTIFIER pl=paren_comma(formalParameter) el=loption(throws) mb=block {
-        `Const { cmodifiers = [] ; cname = id ; cargstype=pl ; cthrows =el ; cbody=mb }
+        `Const { cmodifiers = [] ; cname = id ; cargstype=pl ; cthrows =el ; cbody=mb; cloc = Location.symbol_loc $startpos $endpos }
     }
   | c = classDeclaration {
        let id, info = c in

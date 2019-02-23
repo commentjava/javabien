@@ -145,7 +145,7 @@ type astconst = {
     cargstype : argument list;
     cthrows : Type.ref_type list;
     cbody : statement list;
-    (*      mloc : Location.t;*)
+    cloc : Location.t;
   }
 
 and astclass = {
@@ -757,7 +757,7 @@ let print_AST_astmethod a depth last =
 ;;
 
 let rec print_AST_astconst c depth last =
-    print_AST_title "AST constant" depth last;
+    print_AST_title "AST constructors" depth last;
     print_AST_title "Modifiers :" (extend_depth depth last) false;
     apply_list print_AST_modifier (c.cmodifiers) (extend_depth (extend_depth depth last) false);
     print_AST_string (c.cname) (extend_depth depth last) false;
@@ -774,7 +774,7 @@ print_AST_astclass c depth last =
     apply_list print_AST_astattribute (c.cattributes) (extend_depth (extend_depth depth last) false);
     print_AST_title "Inits :" (extend_depth depth last) false;
     apply_list print_AST_initial (c.cinits) (extend_depth (extend_depth depth last) false);
-    print_AST_title "Constants :" (extend_depth depth last) false;
+    print_AST_title "Constructors :" (extend_depth depth last) false;
     apply_list print_AST_astconst (c.cconsts) (extend_depth (extend_depth depth last) false);
     print_AST_title "Methods :" (extend_depth depth last) false;
     apply_list print_AST_astmethod (c.cmethods) (extend_depth (extend_depth depth last) false);

@@ -15,9 +15,15 @@ type javamethod = {
   loc : Location.t;
 }
 
+type javaconst = {
+  args_types: (string, Type.t) Env.t;
+  loc : Location.t;
+}
+
 type javaclass = {
   attributes: (string, javamattribute) Env.t;
   methods: (string, javamethod) Env.t;
+  constructors: javaconst list;
   loc : Location.t;
 }
 
@@ -95,10 +101,15 @@ let print_tc_env (env: tc_env) =
 
 
 let env_astattribute env (attribute: AST.astattribute) =
-  Env.define env attribute.aname {
-    atype = attribute.atype;
-    loc = attribute.aloc
-  }
+  try
+    Env.find env attribute.aname;
+    raise (AlreadyDeclared ("Attribute already defined " ^ attribute.aname))
+  with Not_found -> (
+    Env.define env attribute.aname {
+      atype = attribute.atype;
+      loc = attribute.aloc
+    }
+  )
 ;;
 
 let rec env_astattribute_list env attribute_list =
@@ -107,51 +118,56 @@ let rec env_astattribute_list env attribute_list =
   | h::t -> env_astattribute_list (env_astattribute env h) t
 ;;
 
-let env_astmethod env (amethod: AST.astmethod) =
-  let env_args = Env.initial() in
-  let rec get_args_type (argstype: AST.argument list) args_env =
-    match argstype with
-    | [] -> args_env
-    | h::t -> (
-      if (Env.mem args_env h.pident) then (
-        let arg_type = Env.find args_env h.pident in
-        if arg_type = h.ptype then
-          raise (VariableAlreadyDefined(h.pident));
-      );
-      let args_env_tmp = Env.define args_env h.pident h.ptype in
-      get_args_type t args_env_tmp
-    )
-  in
-  let args_env_tmp = get_args_type amethod.margstype env_args in
+let rec get_args_type (argstype: AST.argument list) args_env =
+  match argstype with
+  | [] -> args_env
+  | h::t -> (
+    if (Env.mem args_env h.pident) then (
+      let arg_type = Env.find args_env h.pident in
+      if arg_type = h.ptype then
+        raise (VariableAlreadyDefined(h.pident));
+    );
+    get_args_type t (Env.define args_env h.pident h.ptype)
+  )
+;;
+
+let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) =
+  let args_env = get_args_type amethod.margstype (Env.initial()) in
   if (Env.mem env amethod.mname) then (
     let method_ = Env.find env amethod.mname in
-    if Env.values method_.args_types = Env.values args_env_tmp then
+    if Env.values method_.args_types = Env.values args_env then
       raise (MethodAlreadyDefined(amethod.mname, amethod.mreturntype));
   );
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
-    args_types = args_env_tmp;
+    args_types = args_env;
     loc = amethod.mloc
   }
 ;;
 
-let rec env_astmethod_list env method_list =
+let rec env_astmethod_list (env: (string, javamethod) Env.t) (method_list: AST.astmethod list) =
   match method_list with
   | [] -> env
   | h::t -> env_astmethod_list (env_astmethod env h) t
 ;;
 
-let env_asttype env (asttype: AST.asttype) =
+let rec env_astconstructor_list (const_list: AST.astconst list) =
+  match const_list with
+  | [] -> []
+  | h::t -> { args_types = (get_args_type h.cargstype (Env.initial())) ; loc = h.cloc}::(env_astconstructor_list t)
+;;
+
+let env_asttype (env: classes_env) (asttype: AST.asttype) =
   (* TODO modifiers *)
   match asttype.info with
   | AST.Class(astclass) ->
-    let attributes = Env.initial() in
-    let attributes = env_astattribute_list attributes astclass.cattributes in
-    let methods = Env.initial() in
-    let methods = env_astmethod_list methods astclass.cmethods in
+    let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
+    let methods = env_astmethod_list (Env.initial()) astclass.cmethods in
+    let consts = env_astconstructor_list astclass.cconsts in
     Env.define env asttype.id {
-      attributes;
-      methods;
+      attributes = attributes;
+      methods = methods;
+      constructors = consts;
       loc = astclass.cloc;
     }
   | AST.Inter -> env (* Interfaces not implemented *)

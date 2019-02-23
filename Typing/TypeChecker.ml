@@ -100,7 +100,7 @@ let rec check_expression env (expression: AST.expression) =
   | AST.ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
   | AST.Array(e, es) -> raise(Failure "Expression array not implemented")
   | AST.AssignExp(e, o, e2) -> (
-    match ((check_expression env e) = (check_expression env e2))  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed *)
+    match ((check_expression env e) = (check_expression env e2))  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
     | true -> Type.Void
     | false -> raise(WrongType "Can't assign a different type") (* TODO Inheritance *)
   )
@@ -130,7 +130,14 @@ let rec check_statement env (statement: AST.statement) =
     | _ -> raise(WrongType "Expected a boolean in if")
   in
   match statement with
-  | AST.VarDecl(l) -> List.fold_left (fun env (vartype, varname, varinit) -> TypingEnv.add_variable env varname vartype) env l
+  | AST.VarDecl(l) -> (
+    List.fold_left (fun env (vartype, varname, varinit) -> (
+        let env = TypingEnv.add_variable env varname vartype in
+        match varinit with
+        | None -> env
+        | Some(e) -> check_expression env {edesc = AST.AssignExp({edesc = AST.Type(vartype)}, AST.Assign, e) }; env
+      )) env l
+  )
   | AST.Block(s) -> check_statement_list env s
   | AST.Nop -> env
   | AST.While(c, s) -> raise(Failure "Statement while not implemented")
