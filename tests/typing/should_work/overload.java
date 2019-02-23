@@ -14,4 +14,12 @@ class A {
 	public int method1(float b, float c) {
 		return 3;
 	}
+
+	public int method1(int a, float b) {
+		return 3;
+	}
+
+	public int method1(float b, int a) {
+		return 3;
+	}
 }

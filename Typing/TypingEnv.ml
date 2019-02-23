@@ -4,14 +4,19 @@ type javamattribute = {
   loc: Location.t;
 }
 
+type javamethodarguments = {
+  args_types: (string, Type.t) Env.t;
+  types: Type.t list;
+}
+
 type javamethod = {
   return_type: Type.t;
-  args_types: (string, Type.t) Env.t; (* params order is not preserved, must be changed *)
+  args: javamethodarguments;
   loc : Location.t;
 }
 
 type javaconst = {
-  args_types: (string, Type.t) Env.t; (* params order is not preserved, must be changed *)
+  args: javamethodarguments;
   loc : Location.t;
 }
 
@@ -58,7 +63,7 @@ let print_method (m: javamethod) depth =
   print_type m.return_type depth;
   print_newline ();
   print_string (depth ^ "└─ ");
-  Env.print "args" print_white_string print_type m.args_types (depth ^ "   ");
+  Env.print "args" print_white_string print_type m.args.args_types (depth ^ "   ")
 ;;
 
 let print_methods methods depth =
@@ -72,7 +77,7 @@ let rec print_constructors consts depth =
   | h::t -> (
     let branch = if ((List.length t) > 0) then "├─ " else "└─ " in
     print_string (depth ^ branch);
-    Env.print "B" print_white_string print_type h.args_types (depth ^ "   ");
+    Env.print "B" print_white_string print_type h.args.args_types (depth ^ "   ");
     print_constructors t depth
   )
 ;;
@@ -107,6 +112,7 @@ let print_tc_env (env: tc_env) =
   print_exec_env env.exec_env
 ;;
 
+
 (*******  Class Env Creating  ********)
 
 
@@ -128,29 +134,33 @@ let rec env_astattribute_list env attribute_list =
   | h::t -> env_astattribute_list (env_astattribute env h) t
 ;;
 
-let rec get_args_type (argstype: AST.argument list) args_env =
+let rec get_args_type (argstype: AST.argument list) (args: javamethodarguments) =
   match argstype with
-  | [] -> args_env
+  | [] -> args
   | h::t -> (
-    if (Env.mem args_env h.pident) then (
-      let arg_type = Env.find args_env h.pident in
-      if arg_type = h.ptype then
-        raise (TypeExcept.VariableAlreadyDefined(h.pident));
+    if (Env.mem args.args_types h.pident) then (
+      raise (TypeExcept.VariableAlreadyDefined(h.pident));
     );
-    get_args_type t (Env.define args_env h.pident h.ptype)
+    get_args_type t {
+      args_types = (Env.define args.args_types h.pident h.ptype);
+      types = args.types @ [h.ptype]
+    }
   )
 ;;
 
 let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) =
-  let args_env = get_args_type amethod.margstype (Env.initial()) in
+  let args_env = get_args_type amethod.margstype ({
+    args_types = Env.initial();
+    types = []
+  }) in
   if (Env.mem env amethod.mname) then (
     let method_ = Env.find env amethod.mname in
-    if Env.values method_.args_types = Env.values args_env then
+    if method_.args.types = args_env.types then
       raise (TypeExcept.MethodAlreadyDefined(amethod.mname, amethod.mreturntype));
   );
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
-    args_types = args_env;
+    args = args_env;
     loc = amethod.mloc
   }
 ;;
@@ -164,7 +174,13 @@ let rec env_astmethod_list (env: (string, javamethod) Env.t) (method_list: AST.a
 let rec env_astconstructor_list (const_list: AST.astconst list) =
   match const_list with
   | [] -> []
-  | h::t -> { args_types = (get_args_type h.cargstype (Env.initial())) ; loc = h.cloc}::(env_astconstructor_list t)
+  | h::t -> {
+    args = (get_args_type h.cargstype ({
+      args_types = Env.initial();
+      types = []
+    }));
+    loc = h.cloc
+  }::(env_astconstructor_list t)
 ;;
 
 let env_asttype (env: classes_env) (asttype: AST.asttype) =
