@@ -14,7 +14,7 @@ let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
   let convertible_ref = ["Boolean"; "Byte"; "Character"; "Short"; "Integer"; "Long"; "Float"; "Double"] in
   match type_ with
   | Type.Primitive(p) -> p
-  | Type.Ref(ref_type) when (List.length ref_type.tpath) == 0 && (List.mem ref_type.tid convertible_ref) -> ( 
+  | Type.Ref(ref_type) when (List.length ref_type.tpath) == 0 && (List.mem ref_type.tid convertible_ref) -> (
     match ref_type.tid with (* TODO this doesn't handle types that inherit of convertible types *)
     | "Boolean" -> Type.Boolean
     | "Byte" -> Type.Byte
@@ -57,7 +57,7 @@ let check_value env (value: AST.value) =
 (* expression *)
 let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   let check_exp_op env (e1: AST.expression) (op: AST.infix_op) (e2: AST.expression) =
-    let check_exp_op_add e1 e2 = 
+    let check_exp_op_add e1 e2 =
       let type_e1 = check_expression env e1 in
       let type_e2 = check_expression env e2 in
       match (type_e1, type_e2) with
@@ -147,7 +147,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
 
 (* statement *)
 let rec check_statement env (statement: AST.statement) =
-  let check_statement_if env condition if_statement else_statement = 
+  let check_statement_if env condition if_statement else_statement =
     let condition_type = unboxing_conversion (check_expression env condition)
     in
     match condition_type with
@@ -225,10 +225,12 @@ let check_t env (ast: AST.t) =
 ;;
 
 let rec typing (ast: AST.t) =
-  let env = TypingEnv.create_env ast in
-  TypingEnv.print_classes_env env.classes_env;
-  print_newline ();
-  check_t env ast;
-  print_string "\nType checking \x1b[0;32mok\x1b[0m\n";
-  ast (* For now don't change the ast, in the future it might be changed to include to be a typed ast *)
-;;
+  try (
+    let env = TypingEnv.create_env ast in
+    TypingEnv.print_classes_env env.classes_env;
+    print_newline ();
+    check_t env ast;
+    print_string "\nType checking \x1b[0;32mok\x1b[0m\n";
+    ast (* For now don't change the ast, in the future it might be changed to include to be a typed ast *)
+  )
+  with e -> TypeExcept.print_error e; ast
