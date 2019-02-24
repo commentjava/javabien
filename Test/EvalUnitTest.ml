@@ -9,7 +9,7 @@ let create_debug d =
 
 let strip str =
     let str = Str.replace_first (Str.regexp "^ +") "" str in
-      Str.replace_first (Str.regexp " +$") "" str;;
+      Str.replace_first (Str.regexp " *\r$") "" str;;
 
 let rec cmp = function
   | [], [] -> ();
