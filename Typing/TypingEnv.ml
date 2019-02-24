@@ -16,6 +16,7 @@ type javamethod = {
 }
 
 type javaconst = {
+  name: string;
   args: javamethodarguments;
   loc : Location.t;
 }
@@ -24,11 +25,11 @@ type javaclass = {
   attributes: (string, javamattribute) Env.t;
   methods: (string, javamethod) Env.t;
   constructors: javaconst list;
+  types : classes_env; (* For enclosed classes *)
   loc : Location.t;
-}
+} and classes_env = (string, javaclass) Env.t
 
 type exec_env = (string, Type.t) Env.t
-type classes_env = (string, javaclass) Env.t
 
 type tc_env = {
   classes_env: classes_env;
@@ -77,7 +78,7 @@ let rec print_constructors consts depth =
   | h::t -> (
     let branch = if ((List.length t) > 0) then "├─ " else "└─ " in
     print_string (depth ^ branch);
-    Env.print "B" print_white_string print_type h.args.args_types (depth ^ "   ");
+    Env.print h.name print_white_string print_type h.args.args_types (depth ^ "   ");
     print_constructors t depth
   )
 ;;
@@ -86,14 +87,16 @@ let print_attributes attributes depth =
   Env.print "Attributes" print_white_string print_attribute attributes depth
 ;;
 
-let print_javaclass (v: javaclass) depth =
+let rec print_javaclass (v: javaclass) depth =
   print_string ("\n" ^ depth ^ "├─ ");
   print_string (colorWhite ^ "Constructors" ^ colorReset ^ ":");
   print_constructors v.constructors (depth ^ "│  ");
   print_string (depth ^ "├─ ");
   print_methods v.methods (depth ^ "│  ");
-  print_string ("\n" ^ depth ^ "└─ ");
+  print_string ("\n" ^ depth ^ "├─ ");
   print_attributes v.attributes (depth ^ "   ");
+  print_string ("\n" ^ depth ^ "└─ ");
+  Env.print "Enclosed classes" print_string print_javaclass v.types (depth ^ "   ")
   (* Location.print v.loc;
   print_newline() *)
 ;;
@@ -175,6 +178,7 @@ let rec env_astconstructor_list (const_list: AST.astconst list) =
   match const_list with
   | [] -> []
   | h::t -> {
+    name = h.cname;
     args = (get_args_type h.cargstype ({
       args_types = Env.initial();
       types = []
@@ -183,26 +187,41 @@ let rec env_astconstructor_list (const_list: AST.astconst list) =
   }::(env_astconstructor_list t)
 ;;
 
-let env_asttype (env: classes_env) (asttype: AST.asttype) =
+let rec env_astclass (astclass: AST.astclass) (enclosing_classes: string list) =
+  (* For enclosed classes *)
+  let rec env_enclosed_asttypes_list (enclosed_env: (string, javaclass) Env.t) (types_list: AST.asttype list) =
+    match types_list with
+    | [] -> enclosed_env
+    | h::t -> (
+      if List.mem h.id enclosing_classes then raise(TypeExcept.ClassAlreadyDefined(h.id));
+      env_enclosed_asttypes_list (env_asttype enclosed_env h enclosing_classes) t
+    )
+  in
+  let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
+  let methods = env_astmethod_list (Env.initial()) astclass.cmethods in
+  let consts = env_astconstructor_list astclass.cconsts in (* TODO default constructor MyClass() when no constructor is defined *)
+  let types = env_enclosed_asttypes_list (Env.initial()) astclass.ctypes in
+  {
+    attributes;
+    methods;
+    constructors = consts;
+    types;
+    loc = astclass.cloc;
+  }
+and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: string list) =
   (* TODO modifiers *)
   match asttype.info with
-  | AST.Class(astclass) ->
-    let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
-    let methods = env_astmethod_list (Env.initial()) astclass.cmethods in
-    let consts = env_astconstructor_list astclass.cconsts in (* TODO default constructor MyClass() when no constructor is defined *)
-    Env.define env asttype.id {
-      attributes = attributes;
-      methods = methods;
-      constructors = consts;
-      loc = astclass.cloc;
-    }
+  | AST.Class(astclass) -> (
+    if Env.mem env asttype.id then raise(TypeExcept.ClassAlreadyDefined(asttype.id));
+    Env.define env asttype.id (env_astclass astclass (enclosing_classes @ [asttype.id]))
+  )
   | AST.Inter -> env (* Interfaces not implemented *)
 ;;
 
 let rec env_asttype_list env asttype_list =
   match asttype_list with
   | [] -> env
-  | h::t -> env_asttype_list (env_asttype env h) t
+  | h::t -> env_asttype_list (env_asttype env h []) t
 ;;
 
 let create_classes_env (ast: AST.t) =
