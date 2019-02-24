@@ -1,3 +1,5 @@
+//:5
+//: null
 class MyObject {
 }
 
@@ -11,5 +13,7 @@ class HelloWorld {
                 YourObject obj3 = new YourObject();
                 MyObject fourth = obj2;
                 int test_int = 5;
+                debug(test_int);
+                debug(obj);
         }
 }
