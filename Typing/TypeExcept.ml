@@ -18,6 +18,7 @@ let print_error error =
       print_string "@ ";
       Location.print cloc;
       print_string colorReset;
+      raise error
   )
-  | _ as e -> raise(e)
+  | _ as e -> raise e
 ;;

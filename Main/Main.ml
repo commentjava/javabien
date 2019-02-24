@@ -5,7 +5,7 @@ let skip_type_checking = ref false
 let get_file str =
   let temp2 = Filename.check_suffix str ".java" in
   let file = (if temp2 then str else str^".java") in
-  let filename = 
+  let filename =
     begin
       try
 	let idx = String.rindex str '/' in
@@ -19,7 +19,7 @@ let get_file str =
 
 let compile str =
   let (file, filename) = get_file str in
-  try 
+  try
     let input_file = open_in file in
     let lexbuf = Lexing.from_channel input_file in
     Location.init lexbuf file;

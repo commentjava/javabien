@@ -224,10 +224,10 @@ let check_t env (ast: AST.t) =
   (* List.iter (check_asttype env) ast.type_list; *)
 ;;
 
-let rec typing (ast: AST.t) =
+let rec typing (ast: AST.t) doPrintTypeEnv =
   try (
     let env = TypingEnv.create_env ast in
-    TypingEnv.print_classes_env env.classes_env;
+    if doPrintTypeEnv then TypingEnv.print_classes_env env.classes_env;
     print_newline ();
     check_t env ast;
     print_string "\nType checking \x1b[0;32mok\x1b[0m\n";
