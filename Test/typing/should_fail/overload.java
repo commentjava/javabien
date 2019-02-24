@@ -1,11 +1,11 @@
 package tutu.titi.toto;
 
 class A {
-	public int method1(int a) {
+	public int method1() {
 		return 1;
 	}
 
-	public int method1(int b) {
+	public int method1() {
 		return 2;
 	}
 }

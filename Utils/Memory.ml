@@ -41,6 +41,7 @@ and memory_unit =
   | Object of m_object
   | Primitive of m_primitive
   | Null
+  | DebugMethod
 
 type data_store = (memory_address, memory_unit) Hashtbl.t
 type reference_store = (name, memory_address) Hashtbl.t
@@ -68,7 +69,19 @@ let print_memory_unit u =
   | Null ->
       Printf.printf "\t[null]\n";
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
-  | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;;
+  | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
+  | DebugMethod ->
+      Printf.printf "\t[Debug method]\n";;
+
+let string_from_memory_unit u =
+  match u with
+  | Class c -> "Class";
+  | Method m -> "Method";
+  | Object o -> "Object";  (* TODO: use to_tostring method *)
+  | Null -> "null";
+  | Primitive (Int i) -> string_of_int i;
+  | Primitive (Boolean b) -> string_of_bool b;
+  | DebugMethod -> "DebugMethod";;
 
 let print_memory m =
   Printf.printf "Names in scope :\n";
@@ -90,6 +103,16 @@ let new_mem_obj mem obj =
   Hashtbl.add !mem.data obj_id obj;
 	!mem.next_id <- !mem.next_id + 1;
   obj_id;;
+
+(** populate the memory with some initial functions and objects
+ * Per convention:
+   * Null -> 0
+   * debug() -> 1
+ *)
+let populate_mem mem =
+  new_mem_obj mem Null;
+  let di = new_mem_obj mem DebugMethod in
+  new_mem_name mem "debug" di;;
 
 (** Create a reference to a new memory *)
 let new_memory () =
