@@ -11,11 +11,18 @@ class A {
         B(float j){}
 
         private void myMethodB(){}
+
+        class C {
+
+            C(float j){}
+
+            private void myMethodB(){}
+        }
     }
 
     class C {
 
-        B(float j){}
+        C(float j){}
 
         private void myMethodB(){}
     }

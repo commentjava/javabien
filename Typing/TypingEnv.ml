@@ -174,21 +174,25 @@ let rec env_astmethod_list (env: (string, javamethod) Env.t) (method_list: AST.a
   | h::t -> env_astmethod_list (env_astmethod env h) t
 ;;
 
-let rec env_astconstructor_list (const_list: AST.astconst list) =
+let rec env_astconstructor_list (const_list: AST.astconst list) astclass_name =
   match const_list with
   | [] -> []
-  | h::t -> {
-    name = h.cname;
-    args = (get_args_type h.cargstype ({
-      args_types = Env.initial();
-      types = []
-    }));
-    loc = h.cloc
-  }::(env_astconstructor_list t)
+  | h::t -> (
+    if h.cname <> astclass_name then raise(TypeExcept.InvalidConstructorName(h.cname, astclass_name));
+    {
+      name = h.cname;
+      args = (get_args_type h.cargstype ({
+        args_types = Env.initial();
+        types = []
+      }));
+      loc = h.cloc
+    }::(env_astconstructor_list t astclass_name)
+  )
 ;;
 
-let rec env_astclass (astclass: AST.astclass) (enclosing_classes: string list) =
+let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: string list) =
   (* For enclosed classes *)
+  let enclosing_classes = enclosing_classes @ [astclass_name] in
   let rec env_enclosed_asttypes_list (enclosed_env: (string, javaclass) Env.t) (types_list: AST.asttype list) =
     match types_list with
     | [] -> enclosed_env
@@ -199,7 +203,7 @@ let rec env_astclass (astclass: AST.astclass) (enclosing_classes: string list) =
   in
   let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
   let methods = env_astmethod_list (Env.initial()) astclass.cmethods in
-  let consts = env_astconstructor_list astclass.cconsts in (* TODO default constructor MyClass() when no constructor is defined *)
+  let consts = env_astconstructor_list astclass.cconsts astclass_name in (* TODO default constructor MyClass() when no constructor is defined *)
   let types = env_enclosed_asttypes_list (Env.initial()) astclass.ctypes in
   {
     attributes;
@@ -213,7 +217,7 @@ and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: st
   match asttype.info with
   | AST.Class(astclass) -> (
     if Env.mem env asttype.id then raise(TypeExcept.ClassAlreadyDefined(asttype.id));
-    Env.define env asttype.id (env_astclass astclass (enclosing_classes @ [asttype.id]))
+    Env.define env asttype.id (env_astclass asttype.id astclass enclosing_classes)
   )
   | AST.Inter -> env (* Interfaces not implemented *)
 ;;
