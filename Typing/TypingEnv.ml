@@ -16,7 +16,6 @@ type javamethod = {
 }
 
 type javaconst = {
-  name: string;
   args: javamethodarguments;
   loc : Location.t;
 }
@@ -24,7 +23,7 @@ type javaconst = {
 type javaclass = {
   attributes: (string, javamattribute) Env.t;
   methods: (string, javamethod) Env.t;
-  constructors: javaconst list;
+  constructors: (string, javaconst) Env.t;
   types : classes_env; (* For enclosed classes *)
   loc : Location.t;
 } and classes_env = (string, javaclass) Env.t
@@ -71,16 +70,14 @@ let print_methods methods depth =
   Env.print "Methods" print_white_string print_method methods depth
 ;;
 
+let print_constructor (c: javaconst) depth =
+  print_newline ();
+  print_string (depth ^ "└─ ");
+  Env.print "args" print_white_string print_type c.args.args_types (depth ^ "   ")
+;;
+
 let rec print_constructors consts depth =
-  print_newline();
-  match consts with
-  | [] -> ()
-  | h::t -> (
-    let branch = if ((List.length t) > 0) then "├─ " else "└─ " in
-    print_string (depth ^ branch);
-    Env.print h.name print_white_string print_type h.args.args_types (depth ^ "   ");
-    print_constructors t depth
-  )
+  Env.print "Constructors" print_white_string print_constructor consts depth
 ;;
 
 let print_attributes attributes depth =
@@ -89,9 +86,8 @@ let print_attributes attributes depth =
 
 let rec print_javaclass (v: javaclass) depth =
   print_string ("\n" ^ depth ^ "├─ ");
-  print_string (colorWhite ^ "Constructors" ^ colorReset ^ ":");
   print_constructors v.constructors (depth ^ "│  ");
-  print_string (depth ^ "├─ ");
+  print_string ("\n" ^ depth ^ "├─ ");
   print_methods v.methods (depth ^ "│  ");
   print_string ("\n" ^ depth ^ "├─ ");
   print_attributes v.attributes (depth ^ "   ");
@@ -174,21 +170,49 @@ let rec env_astmethod_list (env: (string, javamethod) Env.t) (method_list: AST.a
   | h::t -> env_astmethod_list (env_astmethod env h) t
 ;;
 
-let rec env_astconstructor_list (const_list: AST.astconst list) astclass_name =
+let env_astconstructor (env: (string, javaconst) Env.t) (const: AST.astconst) astclass_name =
+  if const.cname <> astclass_name then raise(TypeExcept.InvalidConstructorName(const.cname, const.cloc, astclass_name));
+  let args_env = get_args_type const.cargstype ({
+    args_types = Env.initial();
+    types = []
+  }) in
+  if (Env.mem env const.cname) then (
+    let const_ = Env.find env const.cname in
+    if const_.args.types = args_env.types then
+      raise (TypeExcept.ConstructorAlreadyDefined(const.cname));
+  );
+  Env.define env const.cname {
+    args = args_env;
+    loc = const.cloc
+  }
+;;
+
+let rec env_astconstructor_list (env: (string, javaconst) Env.t) (method_list: AST.astconst list) astclass_name =
+  match method_list with
+  | [] -> env
+  | h::t -> env_astconstructor_list (env_astconstructor env h astclass_name) t astclass_name
+;;
+
+(* let rec env_astconstructor_list (env: (string, javaconst) Env.t) (const_list: AST.astconst list) astclass_name =
   match const_list with
   | [] -> []
   | h::t -> (
-    if h.cname <> astclass_name then raise(TypeExcept.InvalidConstructorName(h.cname, astclass_name));
-    {
+    if h.cname <> astclass_name then raise(TypeExcept.InvalidConstructorName(h.cname, h.cloc, astclass_name));
+    let const = {
       name = h.cname;
       args = (get_args_type h.cargstype ({
         args_types = Env.initial();
         types = []
       }));
       loc = h.cloc
-    }::(env_astconstructor_list t astclass_name)
+    } in
+    if List.mem h.cname const_list then (
+      if (List.find h.cname const_list).args.types = const.args.types then
+        raise(TypeExcept.ConstructorAlreadyDefined(h.cname))
+    );
+    ::(env_astconstructor_list t astclass_name)
   )
-;;
+;; *)
 
 let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: string list) =
   (* For enclosed classes *)
@@ -203,7 +227,7 @@ let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: 
   in
   let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
   let methods = env_astmethod_list (Env.initial()) astclass.cmethods in
-  let consts = env_astconstructor_list astclass.cconsts astclass_name in (* TODO default constructor MyClass() when no constructor is defined *)
+  let consts = env_astconstructor_list (Env.initial()) astclass.cconsts astclass_name in (* TODO default constructor MyClass() when no constructor is defined *)
   let types = env_enclosed_asttypes_list (Env.initial()) astclass.ctypes in
   {
     attributes;
