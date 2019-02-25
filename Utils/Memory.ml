@@ -100,9 +100,22 @@ end = struct
   Link the given name with the given memory_address
   *)
   let add_link_name_address (mem : 'a memory ref) (n : name) (mem_a : memory_address) : unit =
-    match !mem.names with
-    | [] -> raise (MemoryError "Memory is missing")
-    | hname::tnames -> Hashtbl.add hname n mem_a
+    let rec find_name_in_stack (names : reference_store list) : bool =
+      match names with
+      | [] -> false
+      | hname::tnames ->
+        if Hashtbl.mem hname n then
+          (Hashtbl.replace hname n mem_a;
+          true)
+        else
+          find_name_in_stack tnames
+    in
+    if find_name_in_stack !mem.names then
+      ()
+    else
+      match !mem.names with
+      | [] -> raise (MemoryError "Memory is missing")
+      | hname::tnames -> Hashtbl.replace hname n mem_a
 
   (* -> new_mem_obj
   Insert the given memory_unit in the memory

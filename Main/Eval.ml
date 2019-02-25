@@ -157,19 +157,14 @@ let execute_program (p : AST.t) debug =
           )
           dl
       end
-    | AST.If (cond, is_true, is_false) ->
+    | AST.Block b ->
       begin
         let mem = Memory.make_empiled_memory mem in
-        let res_addr = execute_expression mem cond in
-        begin
-          match Memory.get_object_from_address mem res_addr, is_false with
-          | Primitive(Boolean(true)), _ -> execute_statement mem is_true
-          | Primitive(Boolean(false)), Some(e) -> execute_statement mem e
-          | Primitive(Boolean(false)), None -> ()
-        end;
-        Printf.printf "  If statement finished\n";
-        print_memory mem
+        List.iter (execute_statement mem) b;
+        Printf.printf "  Block statement finished\n";
+        print_memory mem;
       end
+    | AST.Nop -> ()
     | AST.While (cond, body) ->
       begin
         let mem = Memory.make_empiled_memory mem in
@@ -183,20 +178,49 @@ let execute_program (p : AST.t) debug =
         Printf.printf "  While statement finished\n";
         print_memory mem
       end
-    | AST.Block b ->
+    (* | AST.For *)
+    | AST.If (cond, is_true, is_false) ->
       begin
         let mem = Memory.make_empiled_memory mem in
-        List.iter (execute_statement mem) b;
-        Printf.printf "  Block statement finished\n";
-        print_memory mem;
+        let res_addr = execute_expression mem cond in
+        begin
+          match Memory.get_object_from_address mem res_addr, is_false with
+          | Primitive(Boolean(true)), _ -> execute_statement mem is_true
+          | Primitive(Boolean(false)), Some(e) -> execute_statement mem e
+          | Primitive(Boolean(false)), None -> ()
+        end;
+        Printf.printf "  If statement finished\n";
+        print_memory mem
       end
+    (* | AST.Return *)
+    (* | AST.Throw *)
+    (* | AST.Try *)
     | AST.Expr e -> execute_expression mem e; ()
-    | AST.Nop -> ()
     | _ -> raise(NotImplemented "Statement not Implemented")
 
   (** Execute an expression in memory *)
   and execute_expression mem (expr : AST.expression) : Memory.memory_address =
     match expr.edesc with
+    | AST.New (None, fqn, args) ->
+      begin
+        let class_addr = resolve_fqn mem fqn in
+        Memory.add_object mem (Object { t = class_addr; })
+      end
+    (* | AST.NewArray *)
+    | AST.Call (_, name, args) ->
+      begin
+        let args_addr = List.map (fun e -> execute_expression mem e) args in
+        let method_addr = resolve_fqn mem [name] in
+        execute_method mem method_addr args_addr;
+        0 (* TODO: return method return value *)
+      end
+    (* | AST.Attr *)
+    (* | AST.If (cond, is_true, is_false) -> (
+        let res_id = execute_expression mem cond in
+        match Hashtbl.find !mem.data res_id with
+        | Primitive(Boolean(true)) -> execute_expression mem is_true;
+        | Primitive(Boolean(false)) -> execute_expression mem is_false;
+    ); *)
     | AST.Val v ->
       begin
         match v with
@@ -204,21 +228,18 @@ let execute_program (p : AST.t) debug =
         | AST.Boolean b -> Memory.add_object mem (Primitive(Boolean(b)))
         | _ -> 0
       end
-    (* | AST.If (cond, is_true, is_false) -> (
-        let res_id = execute_expression mem cond in
-        match Hashtbl.find !mem.data res_id with
-        | Primitive(Boolean(true)) -> execute_expression mem is_true;
-        | Primitive(Boolean(false)) -> execute_expression mem is_false;
-    ); *)
-    | AST.New (None, fqn, args) ->
-      begin
-        let class_addr = resolve_fqn mem fqn in
-        Memory.add_object mem (Object { t = class_addr; })
-      end
     | AST.Name n ->
       begin
         Memory.get_address_from_name mem n
       end
+    (* | AST.ArrayInit *)
+    (* | AST.Array *)
+    | AST.AssignExp (e1, op, e2) ->
+      begin
+        redirect_expression mem e1 op (execute_expression mem e2)
+      end
+    (* | AST.Post *)
+    (* | AST.Pre *)
     | AST.Op (e1, op, e2) ->
       begin
         let e1_addr = execute_expression mem e1 in
@@ -229,8 +250,8 @@ let execute_program (p : AST.t) debug =
           | _ -> raise (InvalidOp "Operations can only be done on primitives")
         in
         let op = match op with
-        | AST.Op_cor -> mod_primitives
-        | AST.Op_cand -> mod_primitives
+        | AST.Op_cor -> mod_primitives (* TODO : error here? *)
+        | AST.Op_cand -> mod_primitives (* TODO : error here? *)
         | AST.Op_or -> or_primitives
         | AST.Op_and -> and_primitives
         | AST.Op_xor -> xor_primitives
@@ -249,13 +270,56 @@ let execute_program (p : AST.t) debug =
         | AST.Op_mod -> mod_primitives in
         op mem (e1_val, e2_val)
       end
-    | AST.Call (_, name, args) ->
+    (* | AST.CondOp *)
+    (* | AST.Cast *)
+    (* | AST.Type *)
+    (* | AST.ClassOf *)
+    (* | AST.InstanceOf *)
+    (* | AST.VoidClass *)
+    | _ -> raise(NotImplemented "Expression Implemented")
+  (** Redirect the result of the given expression to the given memory_address *)
+  and redirect_expression mem (e1 : AST.expression) (op : AST.assign_op) (e2_addr : Memory.memory_address) : Memory.memory_address =
+    match e1.edesc with
+    (* | New of string option * string list * expression list *)
+    (* | NewArray of Type.t * (expression option) list * expression option *)
+    (* | Call of expression option * string * expression list *)
+    (* | Attr of expression * string *)
+    (* | If of expression * expression * expression *)
+    (* | Val of value *)
+    | AST.Name (n) ->
       begin
-        let args_addr = List.map (fun e -> execute_expression mem e) args in
-        let method_addr = resolve_fqn mem [name] in
-        execute_method mem method_addr args_addr;
-        0 (* TODO: return method return value *)
+        let e1_val = Memory.get_object_from_name mem n in
+        let res_addr =
+          match op with
+          | Assign -> e2_addr
+          (* | Ass_add -> TODO : make a function to apply an operator between two memory_address or two memory_unit and use it in execute_expression->AST.Op *)
+          (* | Ass_sub *)
+          (* | Ass_mul *)
+          (* | Ass_div *)
+          (* | Ass_mod *)
+          (* | Ass_shl *)
+          (* | Ass_shr *)
+          (* | Ass_shrr *)
+          (* | Ass_and *)
+          (* | Ass_xor *)
+          (* | Ass_or *)
+          | _ -> raise(NotImplemented "Expression Implemented")
+        in
+        Memory.add_link_name_address mem n res_addr;
+        res_addr
       end
+    (* | AST.ArrayInit *)
+    (* | AST.Array *)
+    (* | AST.AssignExp (e1, op, e2) -> *)
+    (* | AST.Post *)
+    (* | AST.Pre *)
+    (* | AST.Op (e1, op, e2) ->*)
+    (* | AST.CondOp *)
+    (* | AST.Cast *)
+    (* | AST.Type *)
+    (* | AST.ClassOf *)
+    (* | AST.InstanceOf *)
+    (* | AST.VoidClass *)
     | _ -> raise(NotImplemented "Expression Implemented")
   in
 
