@@ -18,6 +18,7 @@ module Memory : sig
   (***** Memory factory ***********************************)
   val make_memory : unit -> 'a memory ref                                       (* new_memory *)
   val make_empiled_memory : 'a memory ref -> 'a memory ref
+  val make_memory_stack : 'a memory ref -> 'a memory ref
   (***** Memory tools *************************************)
   val apply_garbage_collector : 'a memory ref -> ('a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) -> unit
 
@@ -34,6 +35,7 @@ end = struct
     names : reference_store list;
     data : 'a data_store;
     next_id : address_counter ref;
+    parent : 'a memory option; (* link to the parent stack *)
   }
 
   (*
@@ -148,6 +150,7 @@ end = struct
       names = [Hashtbl.create 10];
       data = Hashtbl.create 10;
       next_id = ref { v = 0 };
+      parent = None;
     }
 
   (*
@@ -158,6 +161,19 @@ end = struct
       names = (Hashtbl.create 10)::(!mem.names);
       data = !mem.data;
       next_id = ref (!(!mem.next_id));
+      parent = !mem.parent;
+    }
+  (**
+   * New memory stack used for method calls
+   * TODO: add `this` in the stack
+   *)
+  let make_memory_stack (mem : 'a memory ref) : 'a memory ref =
+    let names = List.hd (List.rev !mem.names) in
+    ref {
+      names = (Hashtbl.create 10)::[names];
+      data = !mem.data;
+      next_id = ref (!(!mem.next_id));
+      parent = Some(!mem);
     }
 
   (***** Memory tools *************************************)
@@ -183,7 +199,6 @@ end = struct
         Hashtbl.remove !mem.data addr
       )
       checker
-
 end
 
 (***** Object definition ******************************************)
@@ -208,6 +223,7 @@ type memory_unit =
   | Primitive of m_primitive
   | Null
   | DebugMethod
+  | DebugClass
 
 let string_from_memory_unit (u : memory_unit) : string =
   match u with
@@ -218,6 +234,7 @@ let string_from_memory_unit (u : memory_unit) : string =
   | Primitive (Int i) -> string_of_int i;
   | Primitive (Boolean b) -> string_of_bool b;
   | DebugMethod -> "DebugMethod"
+  | DebugClass -> "DebugClass"
 ;;
 (*
 Print a memory_unit
@@ -243,6 +260,8 @@ let print_memory_unit u =
   | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
   | DebugMethod ->
     Printf.printf "\t[Debug method]\n"
+  | DebugClass ->
+    Printf.printf "\t[Debug class]\n"
 ;;
 
 (* -> populate_mem
@@ -253,7 +272,11 @@ Give a reference to a new memory populated with the following :
 let make_populated_memory () : 'a Memory.memory ref =
   let mem = Memory.make_memory () in
   Memory.add_link_name_object mem "null" Null;
-  Memory.add_link_name_object mem "debug" DebugMethod;
+  (* Create a debug class *)
+  let debug_m_addr = Memory.add_object mem DebugMethod in
+  let debug_c_addr = Memory.add_link_name_object mem "Debug" (Class { methods = Hashtbl.create 10;}) in
+  match Memory.get_object_from_address mem debug_c_addr with
+  | Class c -> Hashtbl.add c.methods "debug" debug_m_addr;
   mem
 ;;
 
@@ -272,7 +295,7 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
       c.methods
   | Method m -> ()
   | Object o ->
-    remove_addr_from_checker mem (Memory.get_object_from_address mem o.t)checker;
+    remove_addr_from_checker mem (Memory.get_object_from_address mem o.t) checker;
     Hashtbl.remove checker o.t
   | Null -> ()
   | Primitive p -> ()
@@ -282,3 +305,16 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
 let apply_garbage_collector mem : unit =
   Memory.apply_garbage_collector mem remove_addr_from_checker
 ;;
+
+let get_method_address (mem : memory_unit Memory.memory ref) obj n =
+  let methods = match obj with
+    | Object o -> (
+      match Memory.get_object_from_address mem o.t with
+      | Class c -> c.methods
+      | _ -> raise (MemoryError "Only Classes and objects can have methods")
+    )
+    | Class c -> c.methods
+    | Null -> raise (MemoryError "NullException")
+    | _ -> raise (MemoryError "Only Classes and objects can have methods") in
+  Hashtbl.find methods n;;
+

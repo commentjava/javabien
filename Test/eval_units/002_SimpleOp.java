@@ -7,7 +7,7 @@ class HelloWorld {
                 int b = 5;
                 int c = a + b;
                 int d = (c * 2 + 7 * a) % 4;
-                debug(c);
-                debug(d);
+                Debug.debug(c);
+                Debug.debug(d);
         }
 }

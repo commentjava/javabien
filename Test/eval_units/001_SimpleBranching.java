@@ -4,13 +4,13 @@
 class HelloWorld {
         static void main(String[] args) {
                 boolean a = true;
-                debug(a);
+                Debug.debug(a);
                 if (a) {
                         int b = 4;
-                        debug(b);
+                        Debug.debug(b);
                 } else {
                         int c = 5;
-                        debug(b);
+                        Debug.debug(b);
                 }
         }
 }

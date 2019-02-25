@@ -122,20 +122,36 @@ let shr_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lsr i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
+
+type statement_return =
+  | Void
+  | Return of Memory.memory_address
+  | Raise (* TODO *)
+
 (** Call the entryPoint of an AST tree, this function looks for the function
   * `void main(String[] args)` in the class `HelloWorld` *)
 let execute_program (p : AST.t) debug =
   (** Execute the method located at the method_id memory address
    * TODO: pass arguments to the method
    *)
-  let rec execute_method mem (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) =
+  let rec execute_method mem (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) : statement_return =
+    let mem = Memory.make_memory_stack mem in
     match (Memory.get_object_from_address mem method_addr) with
-    | Method m -> List.iter (execute_statement mem) m.body
-    | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd attrs)); ()
+    | Method m -> exec_st_list mem m.body
+    | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd attrs)); Void
     | _ -> raise(MemoryError "Only methods are callable")
 
+  and exec_st_list mem = function
+    | [] -> Void
+    | hd::tl -> (
+      match execute_statement mem hd with
+      | Void -> exec_st_list mem tl
+      | Return e -> Return e
+      | Raise -> raise (NotImplemented "Exception not implemented")
+    )
+
   (** Execute a statement in memory *)
-  and execute_statement mem = function
+  and execute_statement (mem : 'a Memory.memory ref) = function
     (** TODO: Take into account the type for apparent type` *)
     | AST.VarDecl dl ->
       begin
@@ -153,19 +169,19 @@ let execute_program (p : AST.t) debug =
               | None -> Memory.add_object mem Null
               | Some e -> execute_expression mem e
             in
-            Memory.add_link_name_address mem name variable_addr
+            Memory.add_link_name_address mem name variable_addr;
           )
-          dl
+          dl;
+          Void
       end
     | AST.Block b ->
-      begin
         let mem = Memory.make_empiled_memory mem in
-        List.iter (execute_statement mem) b;
-        Printf.printf "  Block statement finished\n";
-        print_memory mem;
-        apply_garbage_collector mem
+        let res = exec_st_list mem b in
+      begin
+        (* TODO: apply_garbage_collector mem; *)
+        res
       end
-    | AST.Nop -> ()
+    | AST.Nop -> Void
     | AST.While (cond, body) ->
       begin
         let mem = Memory.make_empiled_memory mem in
@@ -176,8 +192,7 @@ let execute_program (p : AST.t) debug =
           | Primitive(Boolean(false)) -> ();
         in
         run_while cond body;
-        Printf.printf "  While statement finished\n";
-        print_memory mem
+        Void
       end
     (* | AST.For *)
     | AST.If (cond, is_true, is_false) ->
@@ -188,15 +203,14 @@ let execute_program (p : AST.t) debug =
           match Memory.get_object_from_address mem res_addr, is_false with
           | Primitive(Boolean(true)), _ -> execute_statement mem is_true
           | Primitive(Boolean(false)), Some(e) -> execute_statement mem e
-          | Primitive(Boolean(false)), None -> ()
-        end;
-        Printf.printf "  If statement finished\n";
-        print_memory mem
+          | Primitive(Boolean(false)), None -> Void
+        end
       end
-    (* | AST.Return *)
+    | AST.Return None -> Return 0 (* TODO: put that in a const *)
+    | AST.Return Some(expr) -> Return (execute_expression mem expr)
     (* | AST.Throw *)
     (* | AST.Try *)
-    | AST.Expr e -> execute_expression mem e; ()
+    | AST.Expr e -> execute_expression mem e; Void
     | _ -> raise(NotImplemented "Statement not Implemented")
 
   (** Execute an expression in memory *)
@@ -208,12 +222,18 @@ let execute_program (p : AST.t) debug =
         Memory.add_object mem (Object { t = class_addr; })
       end
     (* | AST.NewArray *)
-    | AST.Call (_, name, args) ->
+    | AST.Call (obj_name, method_name, args) ->
+        let obj_addr = match obj_name with
+        | Some(addr) -> execute_expression mem addr
+        | None -> Memory.get_address_from_name mem "this" in (* TODO: check that*)
       begin
+        let obj = Memory.get_object_from_address mem obj_addr in
         let args_addr = List.map (fun e -> execute_expression mem e) args in
-        let method_addr = resolve_fqn mem [name] in
-        execute_method mem method_addr args_addr;
-        0 (* TODO: return method return value *)
+        let method_addr = get_method_address mem obj method_name in
+        match execute_method mem method_addr args_addr with
+        | Void -> 0 (* TODO: put that in a const *)
+        | Return e -> e
+        | Raise -> raise (NotImplemented "Exception not implemented")
       end
     (* | AST.Attr *)
     (* | AST.If (cond, is_true, is_false) -> (
@@ -328,10 +348,7 @@ let execute_program (p : AST.t) debug =
   List.iter (declare_type mem) p.type_list;
   let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
   execute_method mem main_method_addr [];
-  Printf.printf "  Programm finished\n";
-  print_memory mem;
   apply_garbage_collector mem;
-  Printf.printf "  Memory washed\n";
   print_memory mem;
 
 ;;
