@@ -26,3 +26,41 @@ contains a remaining conflict: a conflict between expression and
 declaration of variable in statements that could be solved at the
 price of a much more complex grammar... Here the behavior of choosing
 shift should be ok.
+
+Parser errors
+===
+- b = true && true;
+This doesn't respect operators precedence
+```
+ Expression
+│ └─ AssignExp
+│      ├─ Expression
+│      │  └─ Name
+│      │     └─ b
+│      ├─ =
+│      └─ Expression
+│         └─ Op
+│            ├─ Expression
+│            │  └─ Val
+│            │     └─ Boolean
+│            │        └─ true
+│            ├─ &&
+│            └─ Expression
+│               └─ Val
+│                  └─ Boolean
+│                     └─ true
+```
+
+- int notseenasanarray[]; this should be of type int[]. But int[] ok; works
+
+```
+AstAttribute
+├─ Modifiers :
+├─ notseenasanarray
+├─ int
+└─ none
+```
+
+- two[] = one; This should not be parsed; The expression between [] should be mandatory
+
+- one = two[]; Same as above

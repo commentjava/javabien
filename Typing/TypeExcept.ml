@@ -7,7 +7,7 @@ exception NoSuchConstructor of string
 exception VariableAlreadyDefined of string
 exception WrongType of string
 
-(* There should be much more exceptions *)
+(* TODO check that the above Exception correspond to java exceptions *)
 
 let print_error error =
   let colorRed = "\x1b[0;31m" in

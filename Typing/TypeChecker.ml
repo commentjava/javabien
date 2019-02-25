@@ -25,7 +25,15 @@ let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
     | "Float" -> Type.Float
     | "Doube" -> Type.Double
     )
-  | _ -> raise(TypeExcept.WrongType "Can't be unboxed")
+  | Type.Void -> raise(TypeExcept.WrongType "Void can't be unboxed")
+  | Type.Array(t, s) -> raise(TypeExcept.WrongType "Array can't be unboxed")
+;;
+
+let unary_numeric_promotion (n_type: Type.t) = (* 5.6.1 *)
+  let n_type = unboxing_conversion n_type in
+  match n_type with
+  | Type.Byte | Type.Short | Type.Char | Type.Int -> Type.Int
+  | Type.Long | Type.Float | Type.Double | Type.Boolean -> n_type
 ;;
 
 let binary_numeric_promotion (type_1: Type.t) (type_2: Type.t) = (* 5.6.2 *)
@@ -40,6 +48,13 @@ let binary_numeric_promotion (type_1: Type.t) (type_2: Type.t) = (* 5.6.2 *)
     | _, _ -> Type.Primitive(Type.Int)
 ;;
 
+let capture_conversion (types: Type.t) = (* 5.1.10 *)
+  Type.Ref(Type.object_type) (* Used in cast exp. My brain fried after reading the spec about this *)
+;;
+
+let is_constant_expression (exp: AST.expression_desc) =
+  false (* TODO. Used in cast exp *)
+;;
 
 (*** Ast nodes checks ***)
 
@@ -65,12 +80,17 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
       | Type.Ref(tr), _ when tr == Type.string_type -> Type.Ref(Type.string_type)
       | _, _ -> binary_numeric_promotion type_e1 type_e2
     in
+    let check_exp_op_bool (e1: AST.expression) e2 =
+      ensure_boolean_type (unboxing_conversion (check_expression env e1));
+      ensure_boolean_type (unboxing_conversion (check_expression env e2));
+      Type.Primitive(Type.Boolean)
+    in
     match op with
-    (* | Op_cor -> Type.Boolean TODO check expression types *)
-    (* | Op_cand -> Type.Boolean TODO check expression types *)
-    (* | Op_or -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_and -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_xor -> Type.Int TODO check expression types and fix returned type *)
+    | Op_cor -> check_exp_op_bool e1 e2
+    | Op_cand -> AST.string_of_expression_desc e1.edesc;check_exp_op_bool e1 e2
+    (*| Op_or ->
+    | Op_and ->
+    | Op_xor -> *)
     (* | Op_eq -> Type.Int TODO check expression types and fix returned type *)
     (* | Op_ne -> Type.Int TODO check expression types and fix returned type *)
     (* | Op_gt -> Type.Int TODO check expression types and fix returned type *)
@@ -80,7 +100,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     (* | Op_shl -> Type.Int TODO check expression types and fix returned type *)
     (* | Op_shr -> Type.Int TODO check expression types and fix returned type *)
     (* | Op_shrr -> Type.Int TODO check expression types and fix returned type *)
-    | Op_add -> check_exp_op_add e1 e2;
+    | Op_add -> check_exp_op_add e1 e2
     | Op_sub -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
     | Op_mul -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
     | Op_div -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
@@ -120,7 +140,25 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   | AST.Val(v) -> check_value env v
   | AST.Name(s) -> TypingEnv.get_var_type env s
   | AST.ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
-  | AST.Array(e, es) -> raise(Failure "Expression array not implemented") (* How can es be an option? li = other_li[] is parsed correctly but it seems like a bug *)
+  | AST.Array(e, es) -> (
+    let check_es_type e_opt = 
+      match e_opt with
+      | Some(e) -> if unary_numeric_promotion (check_expression env e) = Type.Int then () else raise(TypeExcept.WrongType "Array access except an int")
+      | None -> raise(Failure "Null array access not implemented")
+    in
+    let array_t = check_expression env e in
+    match array_t with
+    | Type.Array(t, size) -> (
+      match List.length es with
+      | 0 -> array_t
+      | 1 -> check_es_type (List.hd es); t
+      | _ -> (
+        let accessed_type = if size > 1 then Type.Array(t, size - 1) else t in
+        check_expression env {edesc = AST.Array({edesc = AST.Type(accessed_type)}, (List.tl es))}
+      )
+    )
+    | _ -> raise(TypeExcept.WrongType "array required, but other type found")
+  )
   | AST.AssignExp(e, o, e2) -> (
     match ((check_expression env e) = (check_expression env e2))  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
     | true -> Type.Void
@@ -137,7 +175,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     | Op_bnot -> Type.Primitive(ensure_boolean_type exp_type)
   )
   | AST.Op(e1, op, e2) -> check_exp_op env e1 op e2
-  | AST.CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented") (* section 15.25 *)
+  | AST.CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented") (* section 15.25 Some complicated cases won't be handled *)
   | AST.Cast(t, e) -> raise(Failure "Expression cast not implemented") (* TODO Inheritance *)
   | AST.Type(t) -> t
   | AST.ClassOf(t) -> raise(Failure "Expression classof not implemented")

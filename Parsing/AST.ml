@@ -68,7 +68,7 @@ type expression_desc =
   | Val of value
   | Name of string
   | ArrayInit of expression list
-  | Array of expression * (expression option) list
+  | Array of expression * (expression option) list (* TODO fix the parser, see README *)
   | AssignExp of expression * assign_op * expression
   | Post of expression * postfix_op
   | Pre of prefix_op * expression
@@ -534,7 +534,7 @@ let print_AST_value v depth last =
     | Null ->
         print_AST_string "Null" depth last;
     | Boolean (b) ->
-        print_AST_title "Char" depth last;
+        print_AST_title "Boolean" depth last;
         print_AST_bool b (extend_depth depth last) true
 ;;
 
