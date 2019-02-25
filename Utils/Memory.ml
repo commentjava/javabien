@@ -18,6 +18,8 @@ module Memory : sig
   (***** Memory factory ***********************************)
   val make_memory : unit -> 'a memory ref                                       (* new_memory *)
   val make_empiled_memory : 'a memory ref -> 'a memory ref
+  (***** Memory tools *************************************)
+  val apply_garbage_collector : 'a memory ref -> ('a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) -> unit
 
 end = struct
   type memory_address = int
@@ -38,7 +40,7 @@ end = struct
   Print a memory
   *)
   let print_memory (m : 'a memory ref) (f : 'a -> unit) : unit =
-    Printf.printf "\n\nNames in scope :\n";
+    Printf.printf "Names in scope :\n";
     List.iter
       (fun n ->
         Printf.printf "  Stack :\n";
@@ -55,7 +57,8 @@ end = struct
         Printf.printf "%i -> " x;
         f y
       )
-      !m.data
+      !m.data;
+    Printf.printf "\n\n"
 
   (***** Memory getter ************************************)
   (* HIDDEN
@@ -157,6 +160,29 @@ end = struct
       next_id = ref (!(!mem.next_id));
     }
 
+  (***** Memory tools *************************************)
+  let apply_garbage_collector (mem : 'a memory ref) (f : 'a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) : unit =
+    let checker = Hashtbl.create 10 in
+    Hashtbl.iter
+      (fun mem_a obj ->
+        Hashtbl.add checker mem_a true
+      )
+      !mem.data;
+    List.iter
+      (fun n ->
+        Hashtbl.iter
+          (fun n addr ->
+            f mem (get_object_from_address mem addr) checker;
+            Hashtbl.remove checker addr
+          )
+          n
+      )
+      !mem.names;
+    Hashtbl.iter
+      (fun addr b ->
+        Hashtbl.remove !mem.data addr
+      )
+      checker
 
 end
 
@@ -221,16 +247,38 @@ let print_memory_unit u =
 
 (* -> populate_mem
 Give a reference to a new memory populated with the following :
-  0 -> Null
+  "null" -> 0 -> Null
   "debug" -> 1 -> debug()
 *)
 let make_populated_memory () : 'a Memory.memory ref =
   let mem = Memory.make_memory () in
-  Memory.add_object mem Null;
+  Memory.add_link_name_object mem "null" Null;
   Memory.add_link_name_object mem "debug" DebugMethod;
   mem
 ;;
 
 let print_memory mem : unit =
   Memory.print_memory mem print_memory_unit
+;;
+
+let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.memory_address, bool) Hashtbl.t) : unit =
+  match mem_u with
+  | Class c->
+    Hashtbl.iter
+      (fun n addr ->
+        remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
+        Hashtbl.remove checker addr
+      )
+      c.methods
+  | Method m -> ()
+  | Object o ->
+    remove_addr_from_checker mem (Memory.get_object_from_address mem o.t)checker;
+    Hashtbl.remove checker o.t
+  | Null -> ()
+  | Primitive p -> ()
+  | DebugMethod -> ()
+;;
+
+let apply_garbage_collector mem : unit =
+  Memory.apply_garbage_collector mem remove_addr_from_checker
 ;;

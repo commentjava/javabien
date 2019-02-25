@@ -163,6 +163,7 @@ let execute_program (p : AST.t) debug =
         List.iter (execute_statement mem) b;
         Printf.printf "  Block statement finished\n";
         print_memory mem;
+        apply_garbage_collector mem
       end
     | AST.Nop -> ()
     | AST.While (cond, body) ->
@@ -291,7 +292,7 @@ let execute_program (p : AST.t) debug =
         let e1_val = Memory.get_object_from_name mem n in
         let res_addr =
           match op with
-          | Assign -> e2_addr
+          | AST.Assign -> e2_addr
           (* | Ass_add -> TODO : make a function to apply an operator between two memory_address or two memory_unit and use it in execute_expression->AST.Op *)
           (* | Ass_sub *)
           (* | Ass_mul *)
@@ -329,5 +330,9 @@ let execute_program (p : AST.t) debug =
   execute_method mem main_method_addr [];
   Printf.printf "  Programm finished\n";
   print_memory mem;
+  apply_garbage_collector mem;
+  Printf.printf "  Memory washed\n";
+  print_memory mem;
+
 ;;
 
