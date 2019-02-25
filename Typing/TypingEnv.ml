@@ -25,6 +25,7 @@ type javaclass = {
   methods: (string, javamethod) Env.t;
   constructors: (string, javaconst) Env.t;
   types : classes_env; (* For enclosed classes *)
+  modifiers : AST.modifier list;
   loc : Location.t;
 } and classes_env = (string, javaclass) Env.t
 
@@ -84,13 +85,27 @@ let print_attributes attributes depth =
   Env.print "Attributes" print_white_string print_attribute attributes depth
 ;;
 
+let rec print_modifiers modifiers depth =
+  match modifiers with
+  | [] -> ()
+  | [m] -> print_string (depth ^ "|  "); AST.print_AST_modifier m "" true
+  | h::t -> (
+    print_string (depth ^ "|  ");
+    AST.print_AST_modifier h "" false;
+    print_modifiers t depth
+  )
+;;
+
 let rec print_javaclass (v: javaclass) depth =
   print_string ("\n" ^ depth ^ "├─ ");
+  print_string "Modifiers:\n";
+  print_modifiers v.modifiers depth;
+  print_string (depth ^ "├─ ");
   print_constructors v.constructors (depth ^ "│  ");
   print_string ("\n" ^ depth ^ "├─ ");
   print_methods v.methods (depth ^ "│  ");
   print_string ("\n" ^ depth ^ "├─ ");
-  print_attributes v.attributes (depth ^ "   ");
+  print_attributes v.attributes (depth ^ "|  ");
   print_string ("\n" ^ depth ^ "└─ ");
   Env.print "Enclosed classes" print_string print_javaclass v.types (depth ^ "   ")
   (* Location.print v.loc;
@@ -193,26 +208,9 @@ let rec env_astconstructor_list (env: (string, javaconst) Env.t) (method_list: A
   | h::t -> env_astconstructor_list (env_astconstructor env h astclass_name) t astclass_name
 ;;
 
-(* let rec env_astconstructor_list (env: (string, javaconst) Env.t) (const_list: AST.astconst list) astclass_name =
-  match const_list with
-  | [] -> []
-  | h::t -> (
-    if h.cname <> astclass_name then raise(TypeExcept.InvalidConstructorName(h.cname, h.cloc, astclass_name));
-    let const = {
-      name = h.cname;
-      args = (get_args_type h.cargstype ({
-        args_types = Env.initial();
-        types = []
-      }));
-      loc = h.cloc
-    } in
-    if List.mem h.cname const_list then (
-      if (List.find h.cname const_list).args.types = const.args.types then
-        raise(TypeExcept.ConstructorAlreadyDefined(h.cname))
-    );
-    ::(env_astconstructor_list t astclass_name)
-  )
-;; *)
+let rec env_modifier_list modifier_list =
+  modifier_list
+;;
 
 let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: string list) =
   (* For enclosed classes *)
@@ -234,6 +232,7 @@ let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: 
     methods;
     constructors = consts;
     types;
+    modifiers = [];
     loc = astclass.cloc;
   }
 and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: string list) =
@@ -241,7 +240,10 @@ and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: st
   match asttype.info with
   | AST.Class(astclass) -> (
     if Env.mem env asttype.id then raise(TypeExcept.ClassAlreadyDefined(asttype.id));
-    Env.define env asttype.id (env_astclass asttype.id astclass enclosing_classes)
+    Env.define env asttype.id {
+      (env_astclass asttype.id astclass enclosing_classes)
+      with modifiers = (env_modifier_list asttype.modifiers)
+    }
   )
   | AST.Inter -> env (* Interfaces not implemented *)
 ;;
