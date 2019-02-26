@@ -208,8 +208,13 @@ let rec env_astconstructor_list (env: (string, javaconst) Env.t) (method_list: A
   | h::t -> env_astconstructor_list (env_astconstructor env h astclass_name) t astclass_name
 ;;
 
-let rec env_modifier_list modifier_list =
-  modifier_list
+let rec env_modifier_list (modifier_list: AST.modifier list) (noduplicate_list: AST.modifier list) =
+  match modifier_list with
+  | [] -> noduplicate_list
+  | h::t -> (
+    if List.mem h t then raise(TypeExcept.RepeatedModifier(AST.stringOf_modifier h));
+    env_modifier_list t noduplicate_list @ [h]
+  )
 ;;
 
 let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: string list) =
@@ -242,7 +247,7 @@ and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: st
     if Env.mem env asttype.id then raise(TypeExcept.ClassAlreadyDefined(asttype.id));
     Env.define env asttype.id {
       (env_astclass asttype.id astclass enclosing_classes)
-      with modifiers = (env_modifier_list asttype.modifiers)
+      with modifiers = (env_modifier_list asttype.modifiers [])
     }
   )
   | AST.Inter -> env (* Interfaces not implemented *)
