@@ -14,13 +14,25 @@ let declare_method mem (class_addr : Memory.memory_address) (m : AST.astmethod) 
   | Class cl -> Hashtbl.add cl.methods m.mname method_addr
   | _ -> raise(MemoryError "Only classes can have methods")
 ;;
+let declare_attr mem (class_addr : Memory.memory_address) (a : AST.astattribute) : unit =
+  let attr_addr = match a.adefault with
+  | None -> java_void
+  | Some(expr) -> java_void in (* TODO: execute this expression *)
+  match Memory.get_object_from_address mem class_addr with
+  | Class cl -> Hashtbl.add cl.attributes a.aname attr_addr
+  | _ -> raise(MemoryError "Only classes can have methods")
+;;
 
 (** Declare a new Java type. Only java Classes are implemented *)
 let declare_type mem (t : AST.asttype) : unit =
   match t.info with
   | Class cl ->
-    let class_addr = Memory.add_link_name_object mem t.id (Class { methods = Hashtbl.create 10; }) in
-    List.iter (declare_method mem class_addr) cl.cmethods
+    let class_addr = Memory.add_link_name_object mem t.id (Class {
+      methods = Hashtbl.create 10;
+      attributes = Hashtbl.create 10;
+    }) in
+    List.iter (declare_method mem class_addr) cl.cmethods;
+    List.iter (declare_attr mem class_addr) cl.cattributes
   | Inter -> ()
 ;;
 
@@ -230,7 +242,12 @@ let execute_program (p : AST.t) debug =
     | AST.New (None, fqn, args) ->
       begin
         let class_addr = resolve_fqn mem fqn in
-        Memory.add_object mem (Object { t = class_addr; })
+        match Memory.get_object_from_address mem class_addr with
+        | Class cl -> Memory.add_object mem (Object {
+          t = class_addr;
+          attributes = Hashtbl.copy cl.attributes (* TODO: do not copy statics args *)
+        })
+        | _ -> raise (MemoryError "Invalid new on non class object")
       end
     (* | AST.NewArray *)
     | AST.Call (obj_name, method_name, args) ->
@@ -246,7 +263,12 @@ let execute_program (p : AST.t) debug =
         | Return e -> e
         | Raise -> raise (NotImplemented "Exception not implemented")
       end
-    (* | AST.Attr *)
+    | AST.Attr (caller, aname) ->
+      begin
+        let cl_addr = execute_expression mem caller in
+        let cl = Memory.get_object_from_address mem cl_addr in
+        get_attribute_address mem cl aname
+      end
     (* | AST.If (cond, is_true, is_false) -> (
         let res_id = execute_expression mem cond in
         match Hashtbl.find !mem.data res_id with
@@ -308,7 +330,7 @@ let execute_program (p : AST.t) debug =
     (* | AST.ClassOf *)
     (* | AST.InstanceOf *)
     (* | AST.VoidClass *)
-    | _ -> raise(NotImplemented "Expression Implemented")
+    | _ -> raise(NotImplemented "Expression not Implemented")
   (** Redirect the result of the given expression to the given memory_address *)
   and redirect_expression mem (e1 : AST.expression) (op : AST.assign_op) (e2_addr : Memory.memory_address) : Memory.memory_address =
     match e1.edesc with
@@ -316,6 +338,19 @@ let execute_program (p : AST.t) debug =
     (* | NewArray of Type.t * (expression option) list * expression option *)
     (* | Call of expression option * string * expression list *)
     (* | Attr of expression * string *)
+    | AST.Attr (caller, attr_name) ->
+      begin
+        let cl_addr = execute_expression mem caller in
+        let cl = Memory.get_object_from_address mem cl_addr in
+        let attr_addr = get_attribute_address mem cl attr_name in
+        let res_addr =
+          match op with
+          | AST.Assign -> e2_addr
+          | _ -> raise(NotImplemented "Attr Redirect Expression not Implemented")
+          in
+        set_attribute_address mem cl attr_name res_addr;
+        res_addr
+      end
     (* | If of expression * expression * expression *)
     (* | Val of value *)
     | AST.Name (n) ->
@@ -335,7 +370,7 @@ let execute_program (p : AST.t) debug =
           (* | Ass_and *)
           (* | Ass_xor *)
           (* | Ass_or *)
-          | _ -> raise(NotImplemented "Expression Implemented")
+          | _ -> raise(NotImplemented "Named Redirect Expression not Implemented")
         in
         Memory.add_link_name_address mem n res_addr;
         res_addr
@@ -352,7 +387,7 @@ let execute_program (p : AST.t) debug =
     (* | AST.ClassOf *)
     (* | AST.InstanceOf *)
     (* | AST.VoidClass *)
-    | _ -> raise(NotImplemented "Expression Implemented")
+    | _ -> raise(NotImplemented "Redirect Expression Implemented")
   in
 
   let mem = make_populated_memory () in

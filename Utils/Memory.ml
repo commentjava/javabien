@@ -219,14 +219,16 @@ end
 
 type m_class = {
   (* attributes : (name, memory_address) Hashtbl.t *)
-  methods : (Memory.name, Memory.memory_address) Hashtbl.t
+  methods : (Memory.name, Memory.memory_address) Hashtbl.t;
+  attributes : (Memory.name, Memory.memory_address) Hashtbl.t
 }
 type m_method = {
   arguments : AST.argument list;
   body : AST.statement list
 }
 type m_object = {
-  t : Memory.memory_address
+  t : Memory.memory_address;
+  attributes : (Memory.name, Memory.memory_address) Hashtbl.t
 }
 type m_primitive =
   | Int of int
@@ -265,7 +267,12 @@ let print_memory_unit u =
     Printf.printf "\t[Class]\n";
     Hashtbl.iter
       (fun x y ->
-        Printf.printf "\tm: %s -> %i\n" x y;
+        Printf.printf "\t[a] %s -> %i\n" x y;
+      )
+      c.attributes;
+    Hashtbl.iter
+      (fun x y ->
+        Printf.printf "\t[m] %s -> %i\n" x y;
       )
       c.methods;
   | Method m ->
@@ -274,6 +281,11 @@ let print_memory_unit u =
   | Object o ->
     Printf.printf "\t[Object]\n";
     Printf.printf "\tInstance of: %i\n" o.t;
+    Hashtbl.iter
+      (fun x y ->
+        Printf.printf "\t[a] %s -> %i\n" x y;
+      )
+      o.attributes;
   | Null ->
     Printf.printf "\t[null]\n";
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
@@ -351,3 +363,18 @@ let get_method_address (mem : memory_unit Memory.memory ref) obj n =
     | _ -> raise (MemoryError "Only Classes and objects can have methods") in
   Hashtbl.find methods n;;
 
+let get_attribute_address (mem : memory_unit Memory.memory ref) obj n =
+  let attributes = match obj with
+    | Object o -> o.attributes
+    | Class c -> c.methods
+    | Null -> raise (MemoryError "NullException")
+    | _ -> raise (MemoryError "Only Classes and objects can have methods") in
+  Hashtbl.find attributes n;;
+
+let set_attribute_address (mem : memory_unit Memory.memory ref) obj n new_addr =
+  let attributes = match obj with
+    | Object o -> o.attributes
+    | Class c -> c.methods
+    | Null -> raise (MemoryError "NullException")
+    | _ -> raise (MemoryError "Only Classes and objects can have methods") in
+  Hashtbl.replace attributes n new_addr;;
