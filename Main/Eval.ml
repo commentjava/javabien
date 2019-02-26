@@ -4,38 +4,6 @@ exception NotImplemented of string;;
 exception NullException of string;;
 exception InvalidOp of string;;
 
-(** Create a new method for the class located at `class_id` *)
-let declare_method mem (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
-  let method_addr = Memory.add_object mem (Method{
-    body = m.mbody;
-    arguments = m.margstype;
-  }) in
-  match (Memory.get_object_from_address mem class_addr) with
-  | Class cl -> Hashtbl.add cl.methods m.mname method_addr
-  | _ -> raise(MemoryError "Only classes can have methods")
-;;
-let declare_attr mem (class_addr : Memory.memory_address) (a : AST.astattribute) : unit =
-  let attr_addr = match a.adefault with
-  | None -> java_void
-  | Some(expr) -> java_void in (* TODO: execute this expression *)
-  match Memory.get_object_from_address mem class_addr with
-  | Class cl -> Hashtbl.add cl.attributes a.aname attr_addr
-  | _ -> raise(MemoryError "Only classes can have methods")
-;;
-
-(** Declare a new Java type. Only java Classes are implemented *)
-let declare_type mem (t : AST.asttype) : unit =
-  match t.info with
-  | Class cl ->
-    let class_addr = Memory.add_link_name_object mem t.id (Class {
-      methods = Hashtbl.create 10;
-      attributes = Hashtbl.create 10;
-    }) in
-    List.iter (declare_method mem class_addr) cl.cmethods;
-    List.iter (declare_attr mem class_addr) cl.cattributes
-  | Inter -> ()
-;;
-
 (** Resolve in memory a fqn of the form `classname.method` *)
 let resolve_fqn mem (fqn : string list) : Memory.memory_address =
   let obj_addr = Memory.get_address_from_name mem (List.hd fqn) in
@@ -146,22 +114,20 @@ type statement_return =
 
 (** Call the entryPoint of an AST tree, this function looks for the function
   * `void main(String[] args)` in the class `HelloWorld` *)
-let execute_program (p : AST.t) debug =
-  (** Execute the method located at the method_id memory address
-   * TODO: pass arguments to the method
-   *)
-  let rec execute_method (mem : 'a Memory.memory ref) (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) : statement_return =
+let execute_program (p : AST.t) (args : string list) debug =
+  (** Execute the method located at the method_id memory address *)
+  let rec execute_method (mem : 'a Memory.memory ref) (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (args : Memory.memory_address list) : statement_return =
     let mem = Memory.make_memory_stack mem in
     match (Memory.get_object_from_address mem method_addr) with
     | Method m -> (
       List.iter2 (
         fun (argn : AST.argument) argv -> Memory.add_link_name_address mem argn.pident argv
-      ) m.arguments attrs;
+      ) m.arguments args;
       Memory.add_link_name_address mem java_this caller_id;
       exec_st_list mem m.body;
     )
     | MemDumpMethod -> print_memory mem; Void
-    | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd attrs)); Void
+    | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd args)); Void
     | _ -> raise(MemoryError "Only methods are callable")
 
   and exec_st_list mem = function
@@ -245,16 +211,16 @@ let execute_program (p : AST.t) debug =
         match Memory.get_object_from_address mem class_addr with
         | Class cl -> Memory.add_object mem (Object {
           t = class_addr;
-          attributes = Hashtbl.copy cl.attributes (* TODO: do not copy statics args *)
+          attributes = Hashtbl.copy cl.attributes (* TODO: do not copy statics attrs *)
         })
         | _ -> raise (MemoryError "Invalid new on non class object")
       end
     (* | AST.NewArray *)
     | AST.Call (obj_name, method_name, args) ->
+      begin
         let obj_addr = match obj_name with
         | Some(addr) -> execute_expression mem addr
-        | None -> Memory.get_address_from_name mem java_this in (* TODO: check that*)
-      begin
+        | None -> Memory.get_address_from_name mem java_this in
         let obj = Memory.get_object_from_address mem obj_addr in
         let args_addr = List.map (fun e -> execute_expression mem e) args in
         let method_addr = get_method_address mem obj method_name in
@@ -304,8 +270,8 @@ let execute_program (p : AST.t) debug =
           | _ -> raise (InvalidOp "Operations can only be done on primitives")
         in
         let op = match op with
-        | AST.Op_cor -> mod_primitives (* TODO : error here? *)
-        | AST.Op_cand -> mod_primitives (* TODO : error here? *)
+        | AST.Op_cor -> cor_primitives
+        | AST.Op_cand -> cand_primitives
         | AST.Op_or -> or_primitives
         | AST.Op_and -> and_primitives
         | AST.Op_xor -> xor_primitives
@@ -388,13 +354,45 @@ let execute_program (p : AST.t) debug =
     (* | AST.InstanceOf *)
     (* | AST.VoidClass *)
     | _ -> raise(NotImplemented "Redirect Expression Implemented")
+
+  (** Declare a new Java type. Only java Classes are implemented *)
+  and declare_type mem (t : AST.asttype) : unit =
+    match t.info with
+    | Class cl ->
+      let class_addr = Memory.add_link_name_object mem t.id (Class {
+        methods = Hashtbl.create 10;
+        attributes = Hashtbl.create 10;
+      }) in
+      List.iter (declare_method mem class_addr) cl.cmethods;
+      List.iter (declare_attr mem class_addr) cl.cattributes
+    | Inter -> ()
+
+  (** Declare a new class attribute *)
+  and declare_attr mem (class_addr : Memory.memory_address) (a : AST.astattribute) : unit =
+    let attr_addr = match a.adefault with
+    | None -> java_void
+    | Some(expr) -> execute_expression mem expr in
+    match Memory.get_object_from_address mem class_addr with
+    | Class cl -> Hashtbl.add cl.attributes a.aname attr_addr
+    | _ -> raise(MemoryError "Only classes can have methods")
+
+  (** Create a new method for the class located at `class_addr` *)
+  and declare_method mem (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
+    let method_addr = Memory.add_object mem (Method{
+      body = m.mbody;
+      arguments = m.margstype;
+    }) in
+    match (Memory.get_object_from_address mem class_addr) with
+    | Class cl -> Hashtbl.add cl.methods m.mname method_addr
+    | _ -> raise(MemoryError "Only classes can have methods")
   in
 
   let mem = make_populated_memory () in
   List.iter (declare_type mem) p.type_list;
   let main_addr = resolve_fqn mem ["HelloWorld"] in
   let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
-  execute_method mem main_addr main_method_addr [];
+  let m_args = [] in (* TODO: use args passed, blocked by array def *)
+  execute_method mem main_addr main_method_addr m_args;
   apply_garbage_collector mem;
   (* print_memory mem; *)
 

@@ -1,5 +1,9 @@
 //: 10
 //: 20
+//: 7
+//: 14
+//: 7
+//: null
 
 class TestClass {
         int myattr;
@@ -10,6 +14,18 @@ class TestClass {
 
         int getMyAttr() {
                 return this.myattr;
+        }
+}
+
+class TestClass2 {
+        int simpleAttr = 7;
+
+        void setMyAttr(int a) {
+                this.simpleAttr = a;
+        }
+
+        int getMyAttr() {
+                return this.simpleAttr;
         }
 }
 
@@ -27,5 +43,16 @@ class HelloWorld {
                 d = u.getMyAttr();
                 Debug.debug(c);
                 Debug.debug(d);
+
+                TestClass2 v = new TestClass2();
+                TestClass2 w = new TestClass2();
+                Debug.debug(v.getMyAttr());
+
+                v.setMyAttr(v.getMyAttr() + v.getMyAttr());
+                Debug.debug(v.getMyAttr());
+                Debug.debug(w.getMyAttr());
+                
+                TestClass x = new TestClass();
+                Debug.debug(x.getMyAttr());
         }
 }

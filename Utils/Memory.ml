@@ -173,7 +173,6 @@ end = struct
     }
   (**
    * New memory stack used for method calls
-   * TODO: add `this` in the stack
    *)
   let make_memory_stack (mem : 'a memory ref) : 'a memory ref =
     let names = List.hd (List.rev !mem.names) in
@@ -247,7 +246,7 @@ let string_from_memory_unit (u : memory_unit) : string =
   match u with
   | Class c -> "Class";
   | Method m -> "Method";
-  | Object o -> "Object";  (* TODO: use to_tostring method *)
+  | Object o -> "Object";  (* TODO: use to_string method *)
   | Null -> "null";
   | Primitive (Int i) -> string_of_int i;
   | Primitive (Boolean b) -> string_of_bool b;
