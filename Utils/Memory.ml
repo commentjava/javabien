@@ -19,6 +19,7 @@ module Memory : sig
   val make_memory : unit -> 'a memory ref                                       (* new_memory *)
   val make_empiled_memory : 'a memory ref -> 'a memory ref
   val make_memory_stack : 'a memory ref -> 'a memory ref
+  val save_temp_var : 'a memory ref -> memory_address -> 'a memory ref
   (***** Memory tools *************************************)
   val apply_garbage_collector : 'a memory ref -> memory_address list -> ('a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) -> unit
 
@@ -33,6 +34,7 @@ end = struct
 
   type 'a memory = {
     names : reference_store list;
+    current_expr : memory_address list list;
     data : 'a data_store;
     next_id : address_counter ref;
     parent : 'a memory option; (* link to the parent stack *)
@@ -156,6 +158,7 @@ end = struct
   let make_memory () : 'a memory ref =
     ref {
       names = [Hashtbl.create 10];
+      current_expr = [[]];
       data = Hashtbl.create 10;
       next_id = ref { v = 0 };
       parent = None;
@@ -167,6 +170,7 @@ end = struct
   let make_empiled_memory (mem : 'a memory ref) : 'a memory ref =
     ref {
       names = (Hashtbl.create 10)::(!mem.names);
+      current_expr = (!mem.current_expr);
       data = !mem.data;
       next_id = ref (!(!mem.next_id));
       parent = !mem.parent;
@@ -178,9 +182,20 @@ end = struct
     let names = List.hd (List.rev !mem.names) in
     ref {
       names = (Hashtbl.create 10)::[names];
+      current_expr = [[]];
       data = !mem.data;
       next_id = ref (!(!mem.next_id));
       parent = Some(!mem);
+    }
+
+  let save_temp_var (mem : 'a memory ref) (addr : memory_address) : 'a memory ref =
+    let new_hd = addr :: (List.hd !mem.current_expr) in
+    ref {
+      names = !mem.names;
+      current_expr = new_hd :: (List.tl !mem.current_expr);
+      data = !mem.data;
+      next_id = ref (!(!mem.next_id));
+      parent = !mem.parent
     }
 
   (***** Memory tools *************************************)
