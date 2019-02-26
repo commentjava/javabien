@@ -43,23 +43,23 @@ let resolve_fqn mem (fqn : string list) : Memory.memory_address =
 
 let cor_primitives mem = function
   | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 || i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+  | _ -> raise (InvalidOp "cor: Cannot bool those primitives");;
 
 let cand_primitives mem = function
   | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 && i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+  | _ -> raise (InvalidOp "cand: Cannot bool those primitives");;
 
 let or_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lor i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+  | _ -> raise (InvalidOp "or: Cannot bool those primitives");;
 
 let and_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 land i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+  | _ -> raise (InvalidOp "and: Cannot bool those primitives");;
 
 let xor_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lxor i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
+  | _ -> raise (InvalidOp "xor: Cannot bool those primitives");;
 
 (** Operation to add two Primitive types *)
 let add_primitives mem = function
@@ -88,6 +88,7 @@ let mod_primitives mem = function
 
 let eq_primitives mem = function
   | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 == i2)));
+  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 == i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 let ne_primitives mem = function
@@ -178,7 +179,7 @@ let execute_program (p : AST.t) debug =
         let mem = Memory.make_empiled_memory mem in
         let res = exec_st_list mem b in
       begin
-        (* TODO: apply_garbage_collector mem; *)
+        apply_garbage_collector mem;
         res
       end
     | AST.Nop -> Void
@@ -349,7 +350,7 @@ let execute_program (p : AST.t) debug =
   let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
   execute_method mem main_method_addr [];
   apply_garbage_collector mem;
-  print_memory mem;
+  (* print_memory mem; *)
 
 ;;
 

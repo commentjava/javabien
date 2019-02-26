@@ -42,18 +42,26 @@ end = struct
   Print a memory
   *)
   let print_memory (m : 'a memory ref) (f : 'a -> unit) : unit =
-    Printf.printf "Names in scope :\n";
-    List.iter
-      (fun n ->
-        Printf.printf "  Stack :\n";
-        Hashtbl.iter
-          (fun x y ->
-            Printf.printf "    %s -> %i\n" x y
+    Printf.printf "\n======================\n";
+    Printf.printf "==== MEMORY DUMP =====\n";
+    Printf.printf "=== Names in scope ===\n";
+    let rec print_stack = function
+      | None -> Printf.printf "END OF STACKS\n\n"
+      | Some(s) -> (
+        List.iter
+          (fun n ->
+            Printf.printf "  Stack :\n";
+            Hashtbl.iter
+              (fun x y ->
+                Printf.printf "    %s -> %i\n" x y
+              )
+              n
           )
-          n
-      )
-      !m.names;
-    Printf.printf "\nMemory Structure :\n";
+          s.names;
+          Printf.printf "\nPARENT STACK:\n";
+          print_stack s.parent) in
+    print_stack (Some !m);
+    Printf.printf "=== Memory Structure ===\n";
     Hashtbl.iter
       (fun x y ->
         Printf.printf "%i -> " x;
@@ -184,16 +192,22 @@ end = struct
         Hashtbl.add checker mem_a true
       )
       !mem.data;
-    List.iter
-      (fun n ->
-        Hashtbl.iter
-          (fun n addr ->
-            f mem (get_object_from_address mem addr) checker;
-            Hashtbl.remove checker addr
+    let rec check_stack = function
+      | None -> ()
+      | Some(s) -> (
+        List.iter
+          (fun n ->
+            Hashtbl.iter
+              (fun n addr ->
+                f mem (get_object_from_address mem addr) checker;
+                Hashtbl.remove checker addr
+              )
+              n
           )
-          n
-      )
-      !mem.names;
+        s.names;
+        check_stack s.parent;
+        ) in
+    check_stack (Some !mem);
     Hashtbl.iter
       (fun addr b ->
         Hashtbl.remove !mem.data addr
@@ -303,7 +317,10 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
 ;;
 
 let apply_garbage_collector mem : unit =
-  Memory.apply_garbage_collector mem remove_addr_from_checker
+  (* print_memory mem; *)
+  Memory.apply_garbage_collector mem remove_addr_from_checker;
+  (* Printf.printf "Gargbage collected!\n"; *)
+  (* print_memory mem; *)
 ;;
 
 let get_method_address (mem : memory_unit Memory.memory ref) obj n =
