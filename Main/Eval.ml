@@ -138,7 +138,7 @@ let execute_program (p : AST.t) debug =
   (** Execute the method located at the method_id memory address
    * TODO: pass arguments to the method
    *)
-  let rec execute_method mem (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) : statement_return =
+  let rec execute_method (mem : 'a Memory.memory ref) (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) : statement_return =
     let mem = Memory.make_memory_stack mem in
     match (Memory.get_object_from_address mem method_addr) with
     | Method m -> (
@@ -148,6 +148,7 @@ let execute_program (p : AST.t) debug =
       Memory.add_link_name_address mem java_this caller_id;
       exec_st_list mem m.body;
     )
+    | MemDumpMethod -> print_memory mem; Void
     | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd attrs)); Void
     | _ -> raise(MemoryError "Only methods are callable")
 
