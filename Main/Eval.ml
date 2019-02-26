@@ -378,13 +378,12 @@ let execute_program (p : AST.t) (args : string list) debug =
   and declare_attr mem (class_addr : Memory.memory_address) (a : AST.astattribute) : unit =
     let attr_addr = match a.adefault with
     | None -> java_void
-    | Some(expr) -> execute_expression mem expr in
-    match Memory.get_object_from_address mem class_addr with
-    | Class cl -> Hashtbl.add cl.attributes a.aname {
+    | Some(expr) -> execute_expression mem expr in (* TODO execute now only for static, otherwise execute at object instantiation *)
+    let cl = get_class_from_address mem class_addr in
+    Hashtbl.add cl.attributes a.aname {
       v = attr_addr;
       modifiers = a.amodifiers;
     }
-    | _ -> raise(MemoryError "Only classes can have methods")
 
   (** Create a new method for the class located at `class_addr` *)
   and declare_method mem (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
@@ -392,9 +391,8 @@ let execute_program (p : AST.t) (args : string list) debug =
       body = m.mbody;
       arguments = m.margstype;
     }) in
-    match (Memory.get_object_from_address mem class_addr) with
-    | Class cl -> Hashtbl.add cl.methods m.mname method_addr
-    | _ -> raise(MemoryError "Only classes can have methods")
+    let cl = get_class_from_address mem class_addr in
+    Hashtbl.add cl.methods m.mname method_addr
   in
 
   let mem = make_populated_memory () in
