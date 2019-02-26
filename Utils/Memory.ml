@@ -233,10 +233,14 @@ end
 
 (***** Object definition ******************************************)
 
+type m_attr = {
+  v : Memory.memory_address;
+  modifiers : AST.modifier list;
+}
 type m_class = {
   (* attributes : (name, memory_address) Hashtbl.t *)
   methods : (Memory.name, Memory.memory_address) Hashtbl.t;
-  attributes : (Memory.name, Memory.memory_address) Hashtbl.t
+  attributes : (Memory.name, m_attr) Hashtbl.t
 }
 type m_method = {
   arguments : AST.argument list;
@@ -244,7 +248,7 @@ type m_method = {
 }
 type m_object = {
   t : Memory.memory_address;
-  attributes : (Memory.name, Memory.memory_address) Hashtbl.t
+  attributes : (Memory.name, m_attr) Hashtbl.t
 }
 type m_primitive =
   | Int of int
@@ -283,7 +287,7 @@ let print_memory_unit u =
     Printf.printf "\t[Class]\n";
     Hashtbl.iter
       (fun x y ->
-        Printf.printf "\t[a] %s -> %i\n" x y;
+        Printf.printf "\t[a] %s -> %i\n" x y.v;
       )
       c.attributes;
     Hashtbl.iter
@@ -299,7 +303,7 @@ let print_memory_unit u =
     Printf.printf "\tInstance of: %i\n" o.t;
     Hashtbl.iter
       (fun x y ->
-        Printf.printf "\t[a] %s -> %i\n" x y;
+        Printf.printf "\t[a] %s -> %i\n" x y.v;
       )
       o.attributes;
   | Null ->
@@ -379,18 +383,62 @@ let get_method_address (mem : memory_unit Memory.memory ref) obj n =
     | _ -> raise (MemoryError "Only Classes and objects can have methods") in
   Hashtbl.find methods n;;
 
-let get_attribute_address (mem : memory_unit Memory.memory ref) obj n =
-  let attributes = match obj with
-    | Object o -> o.attributes
-    | Class c -> c.methods
-    | Null -> raise (MemoryError "NullException")
-    | _ -> raise (MemoryError "Only Classes and objects can have methods") in
-  Hashtbl.find attributes n;;
+let get_class_from_address mem addr : m_class =
+  match Memory.get_object_from_address mem addr with
+  | Class c -> c
+  | _ -> raise (MemoryError "Class expected");;
 
-let set_attribute_address (mem : memory_unit Memory.memory ref) obj n new_addr =
+let get_attribute_value_address (mem : memory_unit Memory.memory ref) (obj : memory_unit) (n : Memory.name) =
   let attributes = match obj with
-    | Object o -> o.attributes
-    | Class c -> c.methods
-    | Null -> raise (MemoryError "NullException")
-    | _ -> raise (MemoryError "Only Classes and objects can have methods") in
-  Hashtbl.replace attributes n new_addr;;
+  | Object o -> [o.attributes; (get_class_from_address mem o.t).attributes]
+  | Class c -> [c.attributes]
+  | Null -> raise (MemoryError "NullException")
+  | _ -> raise (MemoryError "Only Classes and objects can have methods") in
+  let addr, found = List.fold_left (fun (c, found) attrs ->
+    match found with
+    | true -> c, found
+    | false -> (
+      try
+        (Hashtbl.find attrs n).v, true
+      with Not_found -> c, found
+      )
+  )
+  (java_void, false)
+  attributes in
+  match found with
+  | true -> addr
+  | false -> raise Not_found;;
+
+let set_attribute_value_address (mem : memory_unit Memory.memory ref) obj n new_addr =
+  let attributes = match obj with
+  | Object o -> [o.attributes; (get_class_from_address mem o.t).attributes]
+  | Class c -> [c.attributes]
+  | Null -> raise (MemoryError "NullException")
+  | _ -> raise (MemoryError "Only Classes and objects can have methods") in
+  let don = List.fold_left (fun don attrs ->
+    match don with
+    | true -> true
+    | false -> (
+      try
+        let old_attr = Hashtbl.find attrs n in
+        Hashtbl.replace attrs n {
+          v = new_addr;
+          modifiers = old_attr.modifiers;
+        }; true
+      with Not_found -> don
+    )
+  )
+  false
+  attributes in
+  match don with
+  | true -> ()
+  | false -> raise Not_found;;
+
+let copy_non_static_attrs (mem : memory_unit Memory.memory ref) (cl : m_class) : (Memory.name, m_attr) Hashtbl.t =
+  let attrs = Hashtbl.create 10 in
+  Hashtbl.iter (fun k v -> match List.mem AST.Static v.modifiers with
+    | false -> Hashtbl.add attrs k v
+    | true -> ()
+  )
+  cl.attributes;
+  attrs

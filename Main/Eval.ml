@@ -14,7 +14,7 @@ let resolve_fqn mem (fqn : string list) : Memory.memory_address =
       | Class cl -> (
         try
           Hashtbl.find cl.methods name
-        with Not_found -> Hashtbl.find cl.attributes name
+        with Not_found -> (Hashtbl.find cl.attributes name).v
       );
       | Object o -> raise (NotImplemented "Resolution not Implemented");
       | Null -> raise (NullException (name ^ " is undefined"));
@@ -216,7 +216,7 @@ let execute_program (p : AST.t) (args : string list) debug =
         match Memory.get_object_from_address mem class_addr with
         | Class cl -> Memory.add_object mem (Object {
           t = class_addr;
-          attributes = Hashtbl.copy cl.attributes (* TODO: do not copy statics attrs *)
+          attributes = copy_non_static_attrs mem cl
         })
         | _ -> raise (MemoryError "Invalid new on non class object")
       end
@@ -238,7 +238,7 @@ let execute_program (p : AST.t) (args : string list) debug =
       begin
         let cl_addr = execute_expression mem caller in
         let cl = Memory.get_object_from_address mem cl_addr in
-        get_attribute_address mem cl aname
+        get_attribute_value_address mem cl aname
       end
     (* | AST.If (cond, is_true, is_false) -> (
         let res_id = execute_expression mem cond in
@@ -315,13 +315,13 @@ let execute_program (p : AST.t) (args : string list) debug =
       begin
         let cl_addr = execute_expression mem caller in
         let cl = Memory.get_object_from_address mem cl_addr in
-        let attr_addr = get_attribute_address mem cl attr_name in
+        let attr_addr = get_attribute_value_address mem cl attr_name in
         let res_addr =
           match op with
           | AST.Assign -> e2_addr
           | _ -> raise(NotImplemented "Attr Redirect Expression not Implemented")
           in
-        set_attribute_address mem cl attr_name res_addr;
+        set_attribute_value_address mem cl attr_name res_addr;
         res_addr
       end
     (* | If of expression * expression * expression *)
@@ -380,7 +380,10 @@ let execute_program (p : AST.t) (args : string list) debug =
     | None -> java_void
     | Some(expr) -> execute_expression mem expr in
     match Memory.get_object_from_address mem class_addr with
-    | Class cl -> Hashtbl.add cl.attributes a.aname attr_addr
+    | Class cl -> Hashtbl.add cl.attributes a.aname {
+      v = attr_addr;
+      modifiers = a.amodifiers;
+    }
     | _ -> raise(MemoryError "Only classes can have methods")
 
   (** Create a new method for the class located at `class_addr` *)
