@@ -11,7 +11,7 @@ class HelloWorld {
                         a = a + b;
                         b = tmp;
                         i = 1 + i;
-                        debug(a);
+                        Debug.debug(a);
                 }
         }
 }

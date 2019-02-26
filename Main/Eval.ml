@@ -6,14 +6,15 @@ exception InvalidOp of string;;
 
 (** Resolve in memory a fqn of the form `classname.method` *)
 let resolve_fqn mem (fqn : string list) : Memory.memory_address =
-  let obj_addr = Memory.get_address_from_name mem (List.hd fqn) in
+  let obj_name = List.hd fqn in
+  let obj_addr = Memory.get_address_from_name mem obj_name in
   List.fold_left
     (fun obj_id name ->
       match (Memory.get_object_from_address mem obj_addr) with
       | Class cl -> (
         try
           Hashtbl.find cl.methods name
-        with Not_found -> raise (NotImplemented "Resolution of attributes not impl")
+        with Not_found -> Hashtbl.find cl.attributes name
       );
       | Object o -> raise (NotImplemented "Resolution not Implemented");
       | Null -> raise (NullException (name ^ " is undefined"));
@@ -164,10 +165,14 @@ let execute_program (p : AST.t) (args : string list) debug =
           Void
       end
     | AST.Block b ->
+      begin
         let mem = Memory.make_empiled_memory mem in
         let res = exec_st_list mem b in
-      begin
-        apply_garbage_collector mem;
+        let gc_keep = match res with
+        | Void -> []
+        | Return e -> [e]
+        | Raise -> raise (NotImplemented "Exception not implemented") in
+        apply_garbage_collector mem gc_keep;
         res
       end
     | AST.Nop -> Void
@@ -250,7 +255,9 @@ let execute_program (p : AST.t) (args : string list) debug =
       end
     | AST.Name n ->
       begin
+        try
         Memory.get_address_from_name mem n
+        with Not_found -> print_memory mem; raise (MemoryError ("Name " ^ n ^ "not found in scope"))
       end
     (* | AST.ArrayInit *)
     (* | AST.Array *)
@@ -393,7 +400,7 @@ let execute_program (p : AST.t) (args : string list) debug =
   let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
   let m_args = [] in (* TODO: use args passed, blocked by array def *)
   execute_method mem main_addr main_method_addr m_args;
-  apply_garbage_collector mem;
+  apply_garbage_collector mem [];
   (* print_memory mem; *)
 
 ;;

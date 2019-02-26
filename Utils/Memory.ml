@@ -20,7 +20,7 @@ module Memory : sig
   val make_empiled_memory : 'a memory ref -> 'a memory ref
   val make_memory_stack : 'a memory ref -> 'a memory ref
   (***** Memory tools *************************************)
-  val apply_garbage_collector : 'a memory ref -> ('a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) -> unit
+  val apply_garbage_collector : 'a memory ref -> memory_address list -> ('a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) -> unit
 
 end = struct
   type memory_address = int
@@ -184,11 +184,13 @@ end = struct
     }
 
   (***** Memory tools *************************************)
-  let apply_garbage_collector (mem : 'a memory ref) (f : 'a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) : unit =
+  let apply_garbage_collector (mem : 'a memory ref) (keep : memory_address list) (f : 'a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) : unit =
     let checker = Hashtbl.create 10 in
     Hashtbl.iter
       (fun mem_a obj ->
-        Hashtbl.add checker mem_a true
+        match List.find_opt (fun x -> x == mem_a) keep with
+        | None -> Hashtbl.add checker mem_a true
+        | _ -> ()
       )
       !mem.data;
     let rec check_stack = function
@@ -343,10 +345,10 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
   | DebugMethod -> ()
 ;;
 
-let apply_garbage_collector mem : unit =
+let apply_garbage_collector mem keep : unit =
   (* print_memory mem; *)
-  Memory.apply_garbage_collector mem remove_addr_from_checker;
-  (* Printf.printf "Gargbage collected!\n"; *)
+  Memory.apply_garbage_collector mem keep remove_addr_from_checker;
+  (* Printf.printf "!!!! Gargbage collected !!!!!\n"; *)
   (* print_memory mem; *)
 ;;
 
