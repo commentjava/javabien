@@ -138,13 +138,14 @@ let execute_program (p : AST.t) debug =
   (** Execute the method located at the method_id memory address
    * TODO: pass arguments to the method
    *)
-  let rec execute_method mem (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) : statement_return =
+  let rec execute_method mem (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) : statement_return =
     let mem = Memory.make_memory_stack mem in
     match (Memory.get_object_from_address mem method_addr) with
     | Method m -> (
       List.iter2 (
         fun (argn : AST.argument) argv -> Memory.add_link_name_address mem argn.pident argv
       ) m.arguments attrs;
+      Memory.add_link_name_address mem java_this caller_id;
       exec_st_list mem m.body;
     )
     | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd attrs)); Void
@@ -215,7 +216,7 @@ let execute_program (p : AST.t) debug =
           | Primitive(Boolean(false)), None -> Void
         end
       end
-    | AST.Return None -> Return 0 (* TODO: put that in a const *)
+    | AST.Return None -> Return java_void
     | AST.Return Some(expr) -> Return (execute_expression mem expr)
     (* | AST.Throw *)
     (* | AST.Try *)
@@ -234,13 +235,13 @@ let execute_program (p : AST.t) debug =
     | AST.Call (obj_name, method_name, args) ->
         let obj_addr = match obj_name with
         | Some(addr) -> execute_expression mem addr
-        | None -> Memory.get_address_from_name mem "this" in (* TODO: check that*)
+        | None -> Memory.get_address_from_name mem java_this in (* TODO: check that*)
       begin
         let obj = Memory.get_object_from_address mem obj_addr in
         let args_addr = List.map (fun e -> execute_expression mem e) args in
         let method_addr = get_method_address mem obj method_name in
-        match execute_method mem method_addr args_addr with
-        | Void -> 0 (* TODO: put that in a const *)
+        match execute_method mem obj_addr method_addr args_addr with
+        | Void -> java_void
         | Return e -> e
         | Raise -> raise (NotImplemented "Exception not implemented")
       end
@@ -355,8 +356,9 @@ let execute_program (p : AST.t) debug =
 
   let mem = make_populated_memory () in
   List.iter (declare_type mem) p.type_list;
+  let main_addr = resolve_fqn mem ["HelloWorld"] in
   let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
-  execute_method mem main_method_addr [];
+  execute_method mem main_addr main_method_addr [];
   apply_garbage_collector mem;
   (* print_memory mem; *)
 

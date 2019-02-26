@@ -251,6 +251,9 @@ let string_from_memory_unit (u : memory_unit) : string =
   | DebugMethod -> "DebugMethod"
   | DebugClass -> "DebugClass"
 ;;
+
+let java_this : Memory.name = "this";;
+let java_void : Memory.memory_address = 0;;
 (*
 Print a memory_unit
 *)
