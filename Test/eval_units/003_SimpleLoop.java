@@ -9,7 +9,7 @@
 //: 9
 //: 10
 class HelloWorld {
-        static void main(String[] args) {
+        static void main() {
                 int a = 0;
                 while (a < 10) {
                         a = a + 1;

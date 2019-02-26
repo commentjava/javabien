@@ -7,7 +7,7 @@ class YourObject {
 }
 
 class HelloWorld {
-        static void main(String[] args) {
+        static void main() {
                 MyObject obj;
                 MyObject obj2 = new MyObject();
                 YourObject obj3 = new YourObject();

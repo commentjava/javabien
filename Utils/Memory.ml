@@ -222,6 +222,7 @@ type m_class = {
   methods : (Memory.name, Memory.memory_address) Hashtbl.t
 }
 type m_method = {
+  arguments : AST.argument list;
   body : AST.statement list
 }
 type m_object = {

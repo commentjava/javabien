@@ -6,7 +6,10 @@ exception InvalidOp of string;;
 
 (** Create a new method for the class located at `class_id` *)
 let declare_method mem (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
-  let method_addr = Memory.add_object mem (Method{ body = m.mbody; }) in
+  let method_addr = Memory.add_object mem (Method{
+    body = m.mbody;
+    arguments = m.margstype;
+  }) in
   match (Memory.get_object_from_address mem class_addr) with
   | Class cl -> Hashtbl.add cl.methods m.mname method_addr
   | _ -> raise(MemoryError "Only classes can have methods")
@@ -138,7 +141,12 @@ let execute_program (p : AST.t) debug =
   let rec execute_method mem (method_addr : Memory.memory_address) (attrs : Memory.memory_address list) : statement_return =
     let mem = Memory.make_memory_stack mem in
     match (Memory.get_object_from_address mem method_addr) with
-    | Method m -> exec_st_list mem m.body
+    | Method m -> (
+      List.iter2 (
+        fun (argn : AST.argument) argv -> Memory.add_link_name_address mem argn.pident argv
+      ) m.arguments attrs;
+      exec_st_list mem m.body;
+    )
     | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd attrs)); Void
     | _ -> raise(MemoryError "Only methods are callable")
 

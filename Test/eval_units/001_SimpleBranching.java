@@ -2,7 +2,7 @@
 //: 4
 
 class HelloWorld {
-        static void main(String[] args) {
+        static void main() {
                 boolean a = true;
                 Debug.debug(a);
                 if (a) {

@@ -2,7 +2,7 @@
 //: 3
 
 class HelloWorld {
-        static void main(String[] args) {
+        static void main() {
                 int a = 5;
                 int b = 5;
                 int c = a + b;
