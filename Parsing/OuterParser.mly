@@ -9,6 +9,13 @@
       | `Meth(m) :: t -> let atts, inits, meths, consts, types = separate t in atts, inits, m::meths, consts, types
       | `Const(c) :: t -> let atts, inits, meths, consts, types = separate t in atts, inits, meths, c::consts, types
       | `Class(c) :: t -> let atts, inits, meths, consts, types = separate t in atts, inits, meths, consts, c::types
+
+    let expand_array_dim t array_dim =
+      if array_dim <= 0 then t
+      else match t with
+      | Type.Array(t, d) -> Type.Array(t, d + array_dim)
+      | _ -> Type.Array(t, array_dim)
+    ;;
 %}
 
 /**************/
@@ -134,9 +141,9 @@ interfaceContent:
 
 memberDecl:
   | t=aType vars=separated_nonempty_list(COMMA,variableDeclarator) SEMI {
-        `AttList (List.map (fun (id,init) -> {
+        `AttList (List.map (fun (id, array_dim, init) -> {
           amodifiers = [] ;
-          atype = t ;
+          atype = expand_array_dim t array_dim;
           aname = id ;
           adefault = init ;
           aloc = Location.symbol_loc $startpos $endpos

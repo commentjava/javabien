@@ -5,12 +5,21 @@
     let rec listOfNames_form_exp = function
       | { edesc = Name(id) } ->	[id]
       | { edesc = Attr(o,id) } -> (listOfNames_form_exp o)@[id]
+    ;;
 
     let rec listOfTypes_form_exp = function
       | { edesc = Name(id) } ->	Ref (Type.mk_type [] id)
       | { edesc = Attr(o,id) } -> Ref (Type.mk_type (listOfNames_form_exp o) id)
       | { edesc = Array(e,el) } -> Array(listOfTypes_form_exp e,List.length el)
       | e -> failwith ("bug listOfTypes_form_exp("^(string_of_expression e)^")")
+    ;;
+
+    let expand_array_dim t array_dim =
+      if array_dim <= 0 then t
+      else match t with
+      | Type.Array(t, d) -> Type.Array(t, d + array_dim)
+      | _ -> Type.Array(t, array_dim)
+    ;;
 %}
 
 (**************
@@ -78,7 +87,7 @@
 
 blockStatement:
   | variableModifier t=aType vdl=separated_nonempty_list(COMMA,variableDeclarator) SEMI {
-	VarDecl (List.map (fun (id,init) -> t, id, init) vdl)
+	VarDecl (List.map (fun (id, array_dim, init) -> (expand_array_dim t array_dim), id, init) vdl)
     }
   | b=block {
 	Block b
@@ -125,7 +134,7 @@ blockStatement:
     }
   | p = primitiveType l = list(pair(LBRACKET,RBRACKET)) vdl=separated_nonempty_list(COMMA,variableDeclarator) SEMI {
 	let t = if List.length l > 0 then Array(Primitive p,List.length l) else Primitive p in
-	VarDecl (List.map (fun (id,init) -> t, id, init) vdl)
+	VarDecl (List.map (fun (id, array_dim, init) -> (expand_array_dim t array_dim), id, init) vdl)
     }
 
 switchStatement:
@@ -138,7 +147,7 @@ expression0:
   | e=expression { `Exp e }
   | o=expression vdl=separated_nonempty_list(COMMA,variableDeclarator)  { 
       let t = listOfTypes_form_exp o in
-      `Decl (VarDecl (List.map (fun (id,init) -> t, id, init) vdl))
+      `Decl (VarDecl (List.map (fun (id, array_dim, init) -> (expand_array_dim t array_dim), id, init) vdl))
     }
 		  
 %inline catch:
@@ -146,13 +155,13 @@ expression0:
 
 forInit:
   | { [] }
-  | variableModifier? t=aType vdl=separated_nonempty_list(COMMA,variableDeclarator) { List.map (fun (id,init) -> Some t, id, init) vdl }
+  | variableModifier? t=aType vdl=separated_nonempty_list(COMMA,variableDeclarator) { List.map (fun (id, array_dim,init) -> Some (expand_array_dim t array_dim), id, init) vdl }
   | variableModifier? vdl=separated_nonempty_list(COMMA,variableDeclarator2) { List.map (fun (id,init) -> None , id, init) vdl }
 %inline variableModifier: FINAL { }
 
 	      
 %public %inline variableDeclarator:
-  | id=IDENTIFIER list(pair(LBRACKET,RBRACKET)) init=option(preceded(ASSIGN,variableInitializer)) { id, init }
+  | id=IDENTIFIER array_dim=list(pair(LBRACKET,RBRACKET)) init=option(preceded(ASSIGN,variableInitializer)) { id, List.length array_dim, init }
 
 %public %inline variableDeclarator2:
   | id=IDENTIFIER init=option(preceded(ASSIGN,variableInitializer)) { id, init }
@@ -200,9 +209,9 @@ expression:
       | _ -> print_endline("CAST( "^(string_of_expression e1)^" ) "^(string_of_expression e2)) ; $syntaxerror}
   | LPAREN t=primitiveType l=list(pair(LBRACKET,RBRACKET)) RPAREN e=expression %prec CAST {
       let t = match List.length l with
-	| 0 -> Primitive t
-	| n -> Array(Primitive t,n) in
-      { edesc = Cast(t,e) }
+      | 0 -> Primitive t
+      | n -> Array(Primitive t,n) in
+          { edesc = Cast(t,e) }
     }
   | o=expression LPAREN params=separated_list(COMMA,expression) RPAREN {
       match o with
@@ -219,17 +228,17 @@ expression:
   | NEW id=qualifiedName tab=nonempty_list(pair(LBRACKET,RBRACKET)) init=arrayInitializer  { { edesc = NewArrayInitialized(Array(Ref(Type.extract_type id), List.length tab), init) } }  
   | NEW t=primitiveType tab=nonempty_list(delimited(LBRACKET,expression,RBRACKET)) { { edesc = NewArrayEmpty(Primitive t, tab) } }
   | NEW t=primitiveType tab=nonempty_list(pair(LBRACKET,RBRACKET)) init=arrayInitializer { { edesc = NewArrayInitialized(Array(Primitive t, List.length tab), init) } }
-  | e=expressionSansBracket tab=nonempty_list(delimited(LBRACKET,expression ?,RBRACKET)) {
+  | e=expressionSansBracket tab=nonempty_list(delimited(LBRACKET,expression,RBRACKET)) {
       { edesc = Array(e,tab) }
     }
   | l=literal { { edesc = Val(l) } }
   | id=name { { edesc = Name(id) } }
   | t=primitiveType l=list(pair(LBRACKET,RBRACKET)) DOT CLASS {
       let t = match List.length l with
-	| 0 -> Primitive t
-	| n -> Array(Primitive t,n) in
-      { edesc = ClassOf(t) }
-    }
+      | 0 -> Primitive t
+      | n -> Array(Primitive t,n) in
+          { edesc = ClassOf(t) }
+        }
 
 expressionSansBracket:
   | LPAREN e=expression RPAREN { e }

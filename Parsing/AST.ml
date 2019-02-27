@@ -69,7 +69,7 @@ type expression_desc =
   | Val of value
   | Name of string
   | ArrayInit of expression list
-  | Array of expression * (expression option) list (* TODO fix the parser, see README *)
+  | Array of expression * expression list (* TODO fix the parser, see README *)
   | AssignExp of expression * assign_op * expression
   | Post of expression * postfix_op
   | Pre of prefix_op * expression
@@ -262,7 +262,7 @@ let rec string_of_expression_desc = function
   | CondOp(e1,e2,e3) ->
      (string_of_expression e1)^"?"^(string_of_expression e2)^":"^(string_of_expression e3)
   | Array(e,el) ->
-     (string_of_expression e)^(ListII.concat_map "" (function | None -> "[]" | Some e -> "["^(string_of_expression e)^"]") el)
+     (string_of_expression e)^(ListII.concat_map "" (function e -> "["^(string_of_expression e)^"]") el)
   | ArrayInit el ->
      "{"^(ListII.concat_map "," string_of_expression el)^"}"
   | Cast(t,e) ->
@@ -327,7 +327,7 @@ and print_statement tab = function
 		print_string(tab^(Type.stringOf t)^" "^id);
 		(match init with
 		| None -> ()
-		| Some e -> print_string (" "^(string_of_expression e)));
+		| Some e -> print_string (" = "^(string_of_expression e)));
 		print_endline ";"
 	       ) dl
   | Block b ->
@@ -569,7 +569,7 @@ let rec print_AST_expression_desc e depth last =
     | NewArrayEmpty (t, eList) ->
         print_AST_title "NewArrayEmpty" depth last;
         print_AST_type t (extend_depth depth last) false;
-        print_AST_title "Sizes :" (extend_depth depth last) false;
+        print_AST_title "Sizes :" (extend_depth depth last) true;
         apply_list print_AST_expression eList (extend_depth (extend_depth depth last) true)
     | NewArrayInitialized (t, e) ->
         print_AST_title "NewArrayInitialized" depth last;
@@ -601,11 +601,11 @@ let rec print_AST_expression_desc e depth last =
         print_AST_title "ArrayInit" depth last;
         print_AST_title "Expressions :" (extend_depth depth last) true;
         apply_list print_AST_expression eList (extend_depth (extend_depth depth last) true)
-    | Array (e, eOptList) ->
+    | Array (e, eList) ->
         print_AST_title "Array" depth last;
         print_AST_expression e (extend_depth depth last) false;
         print_AST_title "Expressions :" (extend_depth depth last) true;
-        apply_list (apply_opt print_AST_expression) eOptList (extend_depth (extend_depth depth last) true)
+        apply_list print_AST_expression eList (extend_depth (extend_depth depth last) true)
     | AssignExp (e1, a, e2) ->
         print_AST_title "AssignExp" depth last;
         print_AST_expression e1 (extend_depth depth last) false;

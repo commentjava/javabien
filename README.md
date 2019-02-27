@@ -133,7 +133,7 @@ Expression
                   └─ true
 ```
 
-- int notseenasanarray[]; this should be of type int[]. But int[] ok; works
+- ~~int notseenasanarray[]; this should be of type int[]. But int[] array; works~~ Fixed
 
 ```
 AstAttribute
@@ -143,11 +143,11 @@ AstAttribute
 └─ none
 ```
 
-- two[] = one; This should not be parsed; The expression between [] should be mandatory
+- ~~two[] = one; This should not be parsed; The expression between [] should be mandatory~~ Fixed
 
-- one = two[]; Same as above
+- ~~one = two[]; Same as above~~ Fixed
 
-- ~~emptyInit = new int[][1][]{1, 2}; This should not be parsed. Even the -v output is wrong ~~ Fixed
+- ~~emptyInit = new int[][1][]{1, 2}; This should not be parsed. Even the -v output is wrong ~~ Fixed by 88aa9f0265a5274cef0a1768755d673411428791
 ```
 input:
 arr = new int[2][][4]{3, 4};

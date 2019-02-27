@@ -154,10 +154,10 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
       check_types_exp_array_init expected_type (List.tl exp_l)
     )
   | AST.Array(e, es) -> (
-    let check_es_type e_opt = 
-      match e_opt with
-      | Some(e) -> if unary_numeric_promotion (check_expression env e) = Type.Int then () else raise(TypeExcept.WrongType "Array access except an int")
-      | None -> raise(Failure "Null array access not implemented")
+    let check_es_type e =
+      match unary_numeric_promotion (check_expression env e) with
+      | Type.Int -> ()
+      | _ -> raise(TypeExcept.WrongType "Array access except an int")
     in
     let array_t = check_expression env e in
     match array_t with
