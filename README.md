@@ -17,8 +17,8 @@ If you want to reuse an existing ocaml library. Start by installing it
 with opam. For example, to use colored terminal output you
 use 'opam install ANSITerminal'.
 Then you must inform ocamlbuild to use the ocamlfind tool:
-'ocamlbuild -use-ocamlfind Main.byte -- tests/UnFichierDeTest.java'
-and you must modify your _tags file to declare the library:
+`ocamlbuild -use-ocamlfind Main.byte -- tests/UnFichierDeTest.java`
+and you must modify your `_tags` file to declare the library:
 true: package(ANSITerminal)
 
 The Lexer/Parser is incomplete but should be ok for phase2. It
@@ -26,6 +26,68 @@ contains a remaining conflict: a conflict between expression and
 declaration of variable in statements that could be solved at the
 price of a much more complex grammar... Here the behavior of choosing
 shift should be ok.
+
+
+# TODO list
+
+## Evaluation
+
+### Primitives
+* [ ] Primitives types
+  * [x] int
+  * [x] bool
+  * [ ] float
+  * [ ] Double
+  * [ ] Char
+  * [ ] String
+* [x] Simple arithmetic operations
+* [x] Simple logic operations
+* [ ] Postfix operations
+* [ ] Prefix operations
+* [x] Variable declaration
+* [x] Variable assignation (only `Assign`)
+* [x] null element
+* [ ] Arrays
+  * [ ] Creation
+  * [ ] Assignation
+  * [ ] Element access
+* [ ] Casting
+* [ ] Exceptions
+
+### Class language
+* [x] Class declaration
+* [x] Method declaration
+* [x] Attributes declaration
+* [x] Attribute Access
+* [x] Static Attribute declaration
+* [x] Static Attribute Access
+* [ ] Inheritance
+
+### Control flow
+* [x] If, else if, else
+* [ ] Block
+* [x] while loop
+* [ ] For loop
+* [x] Method call
+* [x] Method return
+* [ ] Method overload
+* [ ] Inheritance
+* [ ] Object unboxing
+
+### Memory
+* [x] Simple memory heap
+* [x] Simple memory stack
+* [ ] Unamed pointers
+* [ ] Garbage collection
+
+# Other
+* [x] Inline printing
+* [x] Inline memory dump
+* [ ] Program arguments
+* [ ] Simple STD
+* [ ] Threads and multithreading control
+* [ ] Imports
+
 
 Parser errors
 ===
