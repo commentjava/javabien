@@ -16,6 +16,7 @@ let execute filename =
       raise error
     )
     | _ -> (
+      print_endline (Printexc.to_string error);
       seek_in input_file 0;
       close_in (input_file);
     )

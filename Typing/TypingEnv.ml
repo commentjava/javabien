@@ -1,6 +1,7 @@
 (*******  Env Printing  ********)
 type javamattribute = {
   atype: Type.t;
+  modifiers : AST.modifier list;
   loc: Location.t;
 }
 
@@ -12,11 +13,13 @@ type javamethodarguments = {
 type javamethod = {
   return_type: Type.t;
   args: javamethodarguments;
+  modifiers : AST.modifier list;
   loc : Location.t;
 }
 
 type javaconst = {
   args: javamethodarguments;
+  modifiers: AST.modifier list;
   loc : Location.t;
 }
 
@@ -54,8 +57,29 @@ let print_type t depth =
   print_green_string (Type.stringOf t)
 ;;
 
+let print_modifier m depth last =
+  print_string (depth ^ (if last then "└─ " else "├─ "));
+  print_green_string (AST.stringOf_modifier m)
+;;
+
+let rec print_modifiers modifiers depth =
+  match modifiers with
+  | [] -> ()
+  | [m] -> print_modifier m "" true
+  | h::t -> (
+    print_modifier h "" false;
+    print_string ("\n" ^ depth ^ "   ");
+    print_modifiers t depth
+  )
+;;
+
 let print_attribute (a: javamattribute) depth =
   print_type a.atype depth;
+  print_string ("\n" ^ depth ^ "└─ modifiers:");
+  if List.length a.modifiers > 0 then (
+    print_string ("\n" ^ depth ^ "   ");
+    print_modifiers a.modifiers depth;
+  )
 ;;
 
 let print_method (m: javamethod) depth =
@@ -63,7 +87,12 @@ let print_method (m: javamethod) depth =
   print_string (depth ^ "├─ " ^ colorWhite ^ "return type: "^ colorReset );
   print_type m.return_type depth;
   print_newline ();
-  print_string (depth ^ "└─ ");
+  print_string (depth ^ "├─ " ^ colorWhite ^ "modifiers: "^ colorReset );
+  if List.length m.modifiers > 0 then (
+    print_string ("\n" ^ depth ^ "|   ");
+    print_modifiers m.modifiers depth;
+  );
+  print_string ("\n" ^ depth ^ "└─ ");
   Env.print "args" print_white_string print_type m.args.args_types (depth ^ "   ")
 ;;
 
@@ -73,8 +102,13 @@ let print_methods methods depth =
 
 let print_constructor (c: javaconst) depth =
   print_newline ();
-  print_string (depth ^ "└─ ");
-  Env.print "args" print_white_string print_type c.args.args_types (depth ^ "   ")
+  print_string (depth ^ "├─ ");
+  Env.print "args" print_white_string print_type c.args.args_types (depth ^ "|  ");
+  print_string ("\n" ^ depth ^ "└─ " ^ colorWhite ^ "modifiers: "^ colorReset );
+  if List.length c.modifiers > 0 then (
+    print_string ("\n" ^ depth ^ "|   ");
+    print_modifiers c.modifiers depth;
+  );
 ;;
 
 let rec print_constructors consts depth =
@@ -85,22 +119,14 @@ let print_attributes attributes depth =
   Env.print "Attributes" print_white_string print_attribute attributes depth
 ;;
 
-let rec print_modifiers modifiers depth =
-  match modifiers with
-  | [] -> ()
-  | [m] -> print_string (depth ^ "|  "); AST.print_AST_modifier m "" true
-  | h::t -> (
-    print_string (depth ^ "|  ");
-    AST.print_AST_modifier h "" false;
-    print_modifiers t depth
-  )
-;;
-
 let rec print_javaclass (v: javaclass) depth =
   print_string ("\n" ^ depth ^ "├─ ");
-  print_string "Modifiers:\n";
-  print_modifiers v.modifiers depth;
-  print_string (depth ^ "├─ ");
+  print_string "Modifiers:";
+  if List.length v.modifiers > 0 then (
+    print_string ("\n" ^ depth ^ "|  ");
+    print_modifiers v.modifiers depth;
+  );
+  print_string ("\n" ^ depth ^ "├─ ");
   print_constructors v.constructors (depth ^ "│  ");
   print_string ("\n" ^ depth ^ "├─ ");
   print_methods v.methods (depth ^ "│  ");
@@ -129,6 +155,14 @@ let print_tc_env (env: tc_env) =
 
 (*******  Class Env Creating  ********)
 
+let rec env_modifier_list (modifier_list: AST.modifier list) (noduplicate_list: AST.modifier list) =
+  match modifier_list with
+  | [] -> noduplicate_list
+  | h::t -> (
+    if List.mem h t then raise(TypeExcept.RepeatedModifier(AST.stringOf_modifier h));
+    env_modifier_list t noduplicate_list @ [h]
+  )
+;;
 
 let env_astattribute env (attribute: AST.astattribute) =
   try
@@ -137,6 +171,7 @@ let env_astattribute env (attribute: AST.astattribute) =
   with Not_found -> (
     Env.define env attribute.aname {
       atype = attribute.atype;
+      modifiers = env_modifier_list attribute.amodifiers [];
       loc = attribute.aloc
     }
   )
@@ -162,7 +197,7 @@ let rec get_args_type (argstype: AST.argument list) (args: javamethodarguments) 
   )
 ;;
 
-let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) =
+let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) (isClassAbstract: bool) =
   let args_env = get_args_type amethod.margstype ({
     args_types = Env.initial();
     types = []
@@ -172,17 +207,21 @@ let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) =
     if method_.args.types = args_env.types then
       raise (TypeExcept.MethodAlreadyDefined(amethod.mname, amethod.mreturntype));
   );
+  if not isClassAbstract && List.mem AST.Abstract amethod.mmodifiers then
+    raise (TypeExcept.AbstractMethodInNormalClass(amethod.mname));
+  (* TODO raise error if method is abstract and class is not *)
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
     args = args_env;
+    modifiers = env_modifier_list amethod.mmodifiers [];
     loc = amethod.mloc
   }
 ;;
 
-let rec env_astmethod_list (env: (string, javamethod) Env.t) (method_list: AST.astmethod list) =
+let rec env_astmethod_list (env: (string, javamethod) Env.t) (method_list: AST.astmethod list) (isClassAbstract: bool) =
   match method_list with
   | [] -> env
-  | h::t -> env_astmethod_list (env_astmethod env h) t
+  | h::t -> env_astmethod_list (env_astmethod env h isClassAbstract) t isClassAbstract
 ;;
 
 let env_astconstructor (env: (string, javaconst) Env.t) (const: AST.astconst) astclass_name =
@@ -198,6 +237,7 @@ let env_astconstructor (env: (string, javaconst) Env.t) (const: AST.astconst) as
   );
   Env.define env const.cname {
     args = args_env;
+    modifiers = env_modifier_list const.cmodifiers [];
     loc = const.cloc
   }
 ;;
@@ -208,16 +248,7 @@ let rec env_astconstructor_list (env: (string, javaconst) Env.t) (method_list: A
   | h::t -> env_astconstructor_list (env_astconstructor env h astclass_name) t astclass_name
 ;;
 
-let rec env_modifier_list (modifier_list: AST.modifier list) (noduplicate_list: AST.modifier list) =
-  match modifier_list with
-  | [] -> noduplicate_list
-  | h::t -> (
-    if List.mem h t then raise(TypeExcept.RepeatedModifier(AST.stringOf_modifier h));
-    env_modifier_list t noduplicate_list @ [h]
-  )
-;;
-
-let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: string list) =
+let rec env_astclass (astclass_name: string) (astclass: AST.astclass) (enclosing_classes: string list) (isAbstract: bool)=
   (* For enclosed classes *)
   let enclosing_classes = enclosing_classes @ [astclass_name] in
   let rec env_enclosed_asttypes_list (enclosed_env: (string, javaclass) Env.t) (types_list: AST.asttype list) =
@@ -229,7 +260,7 @@ let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: 
     )
   in
   let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
-  let methods = env_astmethod_list (Env.initial()) astclass.cmethods in
+  let methods = env_astmethod_list (Env.initial()) astclass.cmethods isAbstract in
   let consts = env_astconstructor_list (Env.initial()) astclass.cconsts astclass_name in (* TODO default constructor MyClass() when no constructor is defined *)
   let types = env_enclosed_asttypes_list (Env.initial()) astclass.ctypes in
   {
@@ -242,11 +273,12 @@ let rec env_astclass astclass_name (astclass: AST.astclass) (enclosing_classes: 
   }
 and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: string list) =
   (* TODO modifiers *)
+  let isAbstract = List.mem AST.Abstract asttype.modifiers in
   match asttype.info with
   | AST.Class(astclass) -> (
     if Env.mem env asttype.id then raise(TypeExcept.ClassAlreadyDefined(asttype.id));
     Env.define env asttype.id {
-      (env_astclass asttype.id astclass enclosing_classes)
+      (env_astclass asttype.id astclass enclosing_classes isAbstract)
       with modifiers = (env_modifier_list asttype.modifiers [])
     }
   )
