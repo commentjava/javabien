@@ -6,7 +6,7 @@ class A {
 		a++;
 		boolean c = true;
 		boolean b = true || false;
-		// b = true && true; Doesn't work, see README
+		b = true && true;
 		b = (true && true);
 	}
 }

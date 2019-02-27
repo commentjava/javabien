@@ -92,25 +92,45 @@ shift should be ok.
 Parser errors
 ===
 - b = true && true;
-This doesn't respect operators precedence
+This doesn't respect operators precedence.
 ```
- Expression
-│ └─ AssignExp
-│      ├─ Expression
-│      │  └─ Name
-│      │     └─ b
-│      ├─ =
-│      └─ Expression
-│         └─ Op
-│            ├─ Expression
-│            │  └─ Val
-│            │     └─ Boolean
-│            │        └─ true
-│            ├─ &&
-│            └─ Expression
-│               └─ Val
-│                  └─ Boolean
-│                     └─ true
+AST:
+Expression
+└─ Op
+   ├─ Expression
+   │  └─ AssignExp
+   │     ├─ Expression
+   │     │  └─ Name
+   │     │     └─ b
+   │     ├─ =
+   │     └─ Expression
+   │        └─ Val
+   │           └─ Boolean
+   │              └─ true
+   ├─ &&
+   └─ Expression
+      └─ Val
+         └─ Boolean
+            └─ true
+
+Excpected AST:
+Expression
+└─ AssignExp
+   ├─ Expression
+   │  └─ Name
+   │     └─ b
+   ├─ =
+   └─ Expression
+      └─ Op
+         ├─ Expression
+         │  └─ Val
+         │     └─ Boolean
+         │        └─ true
+         ├─ &&
+         └─ Expression
+            └─ Val
+               └─ Boolean
+                  └─ true
 ```
 
 - int notseenasanarray[]; this should be of type int[]. But int[] ok; works
@@ -126,3 +146,12 @@ AstAttribute
 - two[] = one; This should not be parsed; The expression between [] should be mandatory
 
 - one = two[]; Same as above
+
+- ~~emptyInit = new int[][1][]{1, 2}; This should not be parsed. Even the -v output is wrong ~~ Fixed
+```
+input:
+arr = new int[2][][4]{3, 4};
+
+-v output:
+arr = {3,4}.int[2][][4];
+```

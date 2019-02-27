@@ -61,7 +61,8 @@ type infix_op =
 
 type expression_desc =
   | New of string option * string list * expression list
-  | NewArray of Type.t * (expression option) list * expression option
+  | NewArrayEmpty of Type.t * expression list
+  | NewArrayInitialized of Type.t * expression
   | Call of expression option * string * expression list
   | Attr of expression * string
   | If of expression * expression * expression
@@ -273,12 +274,10 @@ let rec string_of_expression_desc = function
   | ClassOf t -> Type.stringOf t
   | Instanceof(e,t) -> (string_of_expression e)^" instanceof "^(Type.stringOf t)
   | VoidClass -> "void.class"
-  | NewArray(t, args,target) ->
-     (match target with
-     | None -> ""
-     | Some e -> (string_of_expression e)^".")^
-     (Type.stringOf t)^
-       (ListII.concat_map "" (function None -> "[]" | Some e -> "["^(string_of_expression e)^"]") args)
+  | NewArrayEmpty(t, exp_lengths) ->
+     "new " ^ (Type.stringOf t) ^ (ListII.concat_map "" (function e -> "["^(string_of_expression e)^"]") exp_lengths)
+  | NewArrayInitialized(t, exp_init) ->
+     "new " ^ (Type.stringOf t) ^ (string_of_expression exp_init)
 
 and string_of_expression e =
   let s = string_of_expression_desc e.edesc in
@@ -567,12 +566,16 @@ let rec print_AST_expression_desc e depth last =
         apply_list print_AST_string sList (extend_depth (extend_depth depth last) false);
         print_AST_title "Expressions :" (extend_depth depth last) true;
         apply_list print_AST_expression eList (extend_depth (extend_depth depth last) true)
-    | NewArray (t, eOptList, eOpt) ->
-        print_AST_title "NewArray" depth last;
+    | NewArrayEmpty (t, eList) ->
+        print_AST_title "NewArrayEmpty" depth last;
         print_AST_type t (extend_depth depth last) false;
-        print_AST_title "Arguments :" (extend_depth depth last) false;
-        apply_list (apply_opt print_AST_expression) eOptList (extend_depth (extend_depth depth last) false);
-        apply_opt print_AST_expression eOpt (extend_depth depth last) true
+        print_AST_title "Sizes :" (extend_depth depth last) false;
+        apply_list print_AST_expression eList (extend_depth (extend_depth depth last) true)
+    | NewArrayInitialized (t, e) ->
+        print_AST_title "NewArrayInitialized" depth last;
+        print_AST_type t (extend_depth depth last) false;
+        print_AST_title "Init :" (extend_depth depth last) false;
+        print_AST_expression e (extend_depth depth last) true
     | Call (eOpt, s, eList) ->
         print_AST_title "Call" depth last;
         apply_opt print_AST_expression eOpt (extend_depth depth last) false;

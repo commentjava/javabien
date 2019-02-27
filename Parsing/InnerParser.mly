@@ -189,7 +189,7 @@ expression:
       | Op _  | Cast _ | Call _ -> (match e2.edesc with
 		 | Pre(Op_neg,e) -> { edesc = Op(e1,Op_sub,e) }
 		 | _ -> print_endline("CAST( "^(string_of_expression e1)^" ) "^(string_of_expression e2)) ; $syntaxerror)
-      | New _ | NewArray _ | If _ | Val _ | AssignExp _ | Post _ | Pre _ | CondOp _ | ArrayInit _
+      | New _ | NewArrayEmpty _ | NewArrayInitialized _ | If _ | Val _ | AssignExp _ | Post _ | Pre _ | CondOp _ | ArrayInit _
       | ClassOf _ | Instanceof _ | VoidClass ->
          print_endline("CAST( "^(string_of_expression e1)^" ) "^(string_of_expression e2)) ; $syntaxerror
       | Attr(e,s) -> { edesc = Cast(Ref(Type.mk_type (listOfNames_form_exp e) s),e2) }
@@ -214,9 +214,11 @@ expression:
       match o with
       | { edesc = Name(n) } -> { edesc = New(Some n,id,params) } }
   | VOID DOT CLASS  { { edesc = VoidClass } }
-  | NEW id=qualifiedName LPAREN params=separated_list(COMMA,expression) RPAREN option(body(classContent* )) { { edesc = New(None,id,params) } }
-  | NEW id=qualifiedName tab=nonempty_list(delimited(LBRACKET,expression ?,RBRACKET)) init=arrayInitializer?  { { edesc = NewArray(Ref(Type.extract_type id),tab,init) } }
-  | NEW t=primitiveType tab=nonempty_list(delimited(LBRACKET,expression ?,RBRACKET)) init=arrayInitializer? { { edesc = NewArray(Primitive t,tab,init) } }
+  | NEW id=qualifiedName LPAREN params=separated_list(COMMA,expression) RPAREN option(body(classContent* )) { { edesc = New(None, id, params) } }
+  | NEW id=qualifiedName tab=nonempty_list(delimited(LBRACKET,expression ,RBRACKET))  { { edesc = NewArrayEmpty(Ref(Type.extract_type id), tab) } }
+  | NEW id=qualifiedName tab=nonempty_list(pair(LBRACKET,RBRACKET)) init=arrayInitializer  { { edesc = NewArrayInitialized(Array(Ref(Type.extract_type id), List.length tab), init) } }  
+  | NEW t=primitiveType tab=nonempty_list(delimited(LBRACKET,expression,RBRACKET)) { { edesc = NewArrayEmpty(Primitive t, tab) } }
+  | NEW t=primitiveType tab=nonempty_list(pair(LBRACKET,RBRACKET)) init=arrayInitializer { { edesc = NewArrayInitialized(Array(Primitive t, List.length tab), init) } }
   | e=expressionSansBracket tab=nonempty_list(delimited(LBRACKET,expression ?,RBRACKET)) {
       { edesc = Array(e,tab) }
     }

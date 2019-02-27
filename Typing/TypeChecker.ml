@@ -117,6 +117,15 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     )
     | _ -> raise(TypeExcept.WrongType "Expected a boolean in if")
   in
+  let rec check_types_exp_array_init expected_type exp_to_check =
+    match exp_to_check with
+    | [] -> (
+      match expected_type with
+      | Type.Array(t, len) -> Type.Array(t, len + 1)
+      | _ -> Type.Array(expected_type, 1)
+    )
+    | h::t -> if (check_expression env h) = expected_type then check_types_exp_array_init expected_type t else raise(TypeExcept.WrongType "Array init with different types")
+  in
   let expression = expression.edesc in
   match expression with
   | AST.New(s, q_name, e) -> (
@@ -127,7 +136,8 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     in
     TypingEnv.check_constructor_exist env new_type (List.map (check_expression env) e)
   ) (* TODO Class1.new Y() not handled, check if Some(s) *)
-  | AST.NewArray(t, e, e2) -> raise(Failure "Expression newarray not implemented")
+  | AST.NewArrayEmpty(t, e_lengths) -> Type.Array(t, List.length e_lengths)
+  | AST.NewArrayInitialized(t, e_init) -> if t = (check_expression env e_init) then t else raise(TypeExcept.WrongType "NewArrayInitialized is assigned a wrong type")
   | AST.Call(eo, s, el) -> (
     let e_type = match eo with
       | Some(e) -> check_expression env e
@@ -139,7 +149,10 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   | AST.If(cond_e, if_e, else_e) -> check_expression_if env cond_e if_e else_e (* TODO How do we test that? *)
   | AST.Val(v) -> check_value env v
   | AST.Name(s) -> TypingEnv.get_var_type env s
-  | AST.ArrayInit(e) -> raise(Failure "Expression arrayinit not implemented")
+  | AST.ArrayInit(exp_l) -> if (List.length exp_l) = 0 then Type.Void else ( (* 10.6 TODO probably not jls complient, we might need to apply unboxing convertion *)
+      let expected_type = check_expression env (List.hd exp_l) in
+      check_types_exp_array_init expected_type (List.tl exp_l)
+    )
   | AST.Array(e, es) -> (
     let check_es_type e_opt = 
       match e_opt with
@@ -159,9 +172,11 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     )
     | _ -> raise(TypeExcept.WrongType "array required, but other type found")
   )
-  | AST.AssignExp(e, o, e2) -> (
-    match ((check_expression env e) = (check_expression env e2))  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
-    | true -> Type.Void
+  | AST.AssignExp(r_exp, o, l_exp) -> (
+    let r_type = (check_expression env r_exp) in
+    let l_type = (check_expression env l_exp) in
+    match (r_type = l_type)  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
+    | true -> r_type
     | false -> raise(TypeExcept.WrongType "Can't assign a different type") (* TODO Inheritance *)
   )
   | AST.Post(e, o) -> Type.Primitive(ensure_numeric_type (unboxing_conversion (check_expression env e)))
