@@ -248,44 +248,50 @@ let rec env_astconstructor_list (env: (string, javaconst) Env.t) (method_list: A
   | h::t -> env_astconstructor_list (env_astconstructor env h astclass_name) t astclass_name
 ;;
 
-let rec env_astclass (astclass_name: string) (astclass: AST.astclass) (enclosing_classes: string list) (isAbstract: bool)=
-  (* For enclosed classes *)
-  let enclosing_classes = enclosing_classes @ [astclass_name] in
-  let rec env_enclosed_asttypes_list (enclosed_env: (string, javaclass) Env.t) (types_list: AST.asttype list) =
-    match types_list with
-    | [] -> enclosed_env
-    | h::t -> (
-      if List.mem h.id enclosing_classes then raise(TypeExcept.ClassAlreadyDefined(h.id));
-      env_enclosed_asttypes_list (env_asttype enclosed_env h enclosing_classes) t
-    )
-  in
+let check_class_modifiers (class_modifiers: AST.modifier list) =
+  let modifiers = (env_modifier_list class_modifiers []) in
+  if List.mem AST.Final modifiers && List.mem AST.Abstract modifiers then
+    raise(TypeExcept.IllegalModifiersCombination(
+      AST.stringOf_modifier(AST.Final), AST.stringOf_modifier(AST.Abstract))
+  );
+  modifiers
+;;
+
+let rec env_enclosed_asttypes_list (enclosed_env: (string, javaclass) Env.t) (types_list: AST.asttype list) (enclosing_classes: string list) =
+  match types_list with
+  | [] -> enclosed_env
+  | h::t -> env_enclosed_asttypes_list (env_asttype enclosed_env h enclosing_classes) t enclosing_classes
+
+and env_astclass (env: classes_env) (astclass_name: string) (astclass: AST.astclass)
+    (enclosing_classes: string list) (modifiers: AST.modifier list) =
+
+  (* check if class is already defined in same level or in enclosing classes *)
+  if Env.mem env astclass_name or List.mem astclass_name enclosing_classes then
+    raise(TypeExcept.ClassAlreadyDefined(astclass_name));
+
+  let modifiers = check_class_modifiers modifiers in
+  let isAbstract = List.mem AST.Abstract modifiers in
+
   let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
   let methods = env_astmethod_list (Env.initial()) astclass.cmethods isAbstract in
   let consts = env_astconstructor_list (Env.initial()) astclass.cconsts astclass_name in (* TODO default constructor MyClass() when no constructor is defined *)
-  let types = env_enclosed_asttypes_list (Env.initial()) astclass.ctypes in
-  {
+
+  (* For enclosed classes *)
+  let types = env_enclosed_asttypes_list (Env.initial()) astclass.ctypes (enclosing_classes @ [astclass_name]) in
+
+  Env.define env astclass_name {
     attributes;
     methods;
     constructors = consts;
     types;
-    modifiers = [];
+    modifiers;
     loc = astclass.cloc;
   }
+
 and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: string list) =
   (* TODO modifiers *)
-  let isAbstract = List.mem AST.Abstract asttype.modifiers in
   match asttype.info with
-  | AST.Class(astclass) -> (
-    if List.mem AST.Final asttype.modifiers && List.mem AST.Abstract asttype.modifiers then
-      raise(TypeExcept.IllegalModifiersCombination(
-        AST.stringOf_modifier(AST.Final), AST.stringOf_modifier(AST.Abstract))
-      );
-    if Env.mem env asttype.id then raise(TypeExcept.ClassAlreadyDefined(asttype.id));
-    Env.define env asttype.id {
-      (env_astclass asttype.id astclass enclosing_classes isAbstract)
-      with modifiers = (env_modifier_list asttype.modifiers [])
-    }
-  )
+  | AST.Class(astclass) -> env_astclass env asttype.id astclass enclosing_classes asttype.modifiers
   | AST.Inter -> env (* Interfaces not implemented *)
 ;;
 
