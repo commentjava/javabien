@@ -8,6 +8,7 @@ exception VariableAlreadyDefined of string
 exception WrongType of string
 exception RepeatedModifier of string
 exception AbstractMethodInNormalClass of string
+exception IllegalModifiersCombination of string * string
 
 
 (* TODO check that the above Exception correspond to java exceptions *)

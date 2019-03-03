@@ -276,6 +276,10 @@ and env_asttype (env: classes_env) (asttype: AST.asttype) (enclosing_classes: st
   let isAbstract = List.mem AST.Abstract asttype.modifiers in
   match asttype.info with
   | AST.Class(astclass) -> (
+    if List.mem AST.Final asttype.modifiers && List.mem AST.Abstract asttype.modifiers then
+      raise(TypeExcept.IllegalModifiersCombination(
+        AST.stringOf_modifier(AST.Final), AST.stringOf_modifier(AST.Abstract))
+      );
     if Env.mem env asttype.id then raise(TypeExcept.ClassAlreadyDefined(asttype.id));
     Env.define env asttype.id {
       (env_astclass asttype.id astclass enclosing_classes isAbstract)
