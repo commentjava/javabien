@@ -155,7 +155,16 @@ let print_tc_env (env: tc_env) =
 
 (*******  Class Env Creating  ********)
 
+let check_modifiers_combination (m1: AST.modifier) (m2: AST.modifier) (ms: AST.modifier list) =
+  if List.mem m1 ms && List.mem m2 ms then
+    raise(TypeExcept.IllegalModifiersCombination(AST.stringOf_modifier(m1), AST.stringOf_modifier(m2)))
+;;
+
 let rec env_modifier_list (modifier_list: AST.modifier list) (noduplicate_list: AST.modifier list) =
+  (* no more than one access modifier *)
+  check_modifiers_combination AST.Public AST.Private modifier_list;
+  check_modifiers_combination AST.Public AST.Protected modifier_list;
+  check_modifiers_combination AST.Private AST.Protected modifier_list;
   match modifier_list with
   | [] -> noduplicate_list
   | h::t -> (
@@ -165,16 +174,18 @@ let rec env_modifier_list (modifier_list: AST.modifier list) (noduplicate_list: 
 ;;
 
 let env_astattribute env (attribute: AST.astattribute) =
-  try
-    Env.find env attribute.aname;
-    raise (TypeExcept.AlreadyDeclared ("Attribute already defined " ^ attribute.aname))
-  with Not_found -> (
-    Env.define env attribute.aname {
-      atype = attribute.atype;
-      modifiers = env_modifier_list attribute.amodifiers [];
-      loc = attribute.aloc
-    }
-  )
+  if Env.mem env attribute.aname then
+    raise (TypeExcept.AlreadyDeclared ("Attribute already defined " ^ attribute.aname));
+
+  let modifiers = env_modifier_list attribute.amodifiers [] in
+  (* check attributes modifiers, only one access modifier *)
+  check_modifiers_combination AST.Final AST.Volatile modifiers;
+
+  Env.define env attribute.aname {
+    atype = attribute.atype;
+    modifiers;
+    loc = attribute.aloc
+  }
 ;;
 
 let rec env_astattribute_list env attribute_list =
@@ -209,11 +220,22 @@ let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) (is
   );
   if not isClassAbstract && List.mem AST.Abstract amethod.mmodifiers then
     raise (TypeExcept.AbstractMethodInNormalClass(amethod.mname));
-  (* TODO raise error if method is abstract and class is not *)
+
+  (* check modifiers *)
+  let modifiers = env_modifier_list amethod.mmodifiers [] in
+  let rec check_modifiers_combination_list (m: AST.modifier) (l: AST.modifier list) =
+    match l with
+    | [] -> ()
+    | h::t -> check_modifiers_combination m h modifiers; check_modifiers_combination_list m t
+  in
+  check_modifiers_combination_list AST.Abstract ([
+    AST.Private; AST.Static; AST.Final; AST.Native; AST.Strictfp; AST.Synchronized
+  ]);
+  check_modifiers_combination AST.Native AST.Strictfp modifiers;
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
     args = args_env;
-    modifiers = env_modifier_list amethod.mmodifiers [];
+    modifiers;
     loc = amethod.mloc
   }
 ;;
