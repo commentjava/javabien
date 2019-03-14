@@ -21,6 +21,7 @@ type t =
 
 let object_type = { tpath = [] ; tid = "Object" }
 let string_type = { tpath = [] ; tid = "String" }
+let null_type = { tpath = [] ; tid = "Null" }
 	     
 let rec array_param = function
   | 0 -> ""

@@ -56,6 +56,16 @@ let is_constant_expression (exp: AST.expression_desc) =
   false (* TODO. Used in cast exp *)
 ;;
 
+let casting_conversion (from_type: Type.t) (to_type: Type.t) = (* 5.5 *)
+  raise(Failure "casting_conversion not implemented");
+  to_type (* TODO *)
+;;
+
+let check_reifiable_type (t: Type.t) = (* 4.7 *)
+  (* TODO *)
+  ()
+;;
+
 (*** Ast nodes checks ***)
 
 (* value *)
@@ -65,46 +75,83 @@ let check_value env (value: AST.value) =
   | AST.Int(s) -> Type.Primitive(Type.Int)
   | AST.Float(s) -> Type.Primitive(Type.Float)
   | AST.Char(s) -> Type.Primitive(Type.Char)
-  (*| Null -> Type.Ref({Everyting???})*)
+  (*| AST.Null -> Type.Ref(Type.null_type)*)
   | AST.Boolean(s) -> Type.Primitive(Type.Boolean)
 ;;
 
-(* expression *)
+(* AST.expression *)
 let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   let check_exp_op env (e1: AST.expression) (op: AST.infix_op) (e2: AST.expression) =
-    let check_exp_op_add e1 e2 =
-      let type_e1 = check_expression env e1 in
-      let type_e2 = check_expression env e2 in
-      match (type_e1, type_e2) with
+    let check_exp_op_add (t1: Type.t) (t2: Type.t) =
+      match (t1, t2) with
       | _, Type.Ref(tr) when tr == Type.string_type -> Type.Ref(Type.string_type)
       | Type.Ref(tr), _ when tr == Type.string_type -> Type.Ref(Type.string_type)
-      | _, _ -> binary_numeric_promotion type_e1 type_e2
+      | _, _ -> binary_numeric_promotion t1 t2
     in
-    let check_exp_op_bool (e1: AST.expression) e2 =
-      ensure_boolean_type (unboxing_conversion (check_expression env e1));
-      ensure_boolean_type (unboxing_conversion (check_expression env e2));
+    let check_exp_op_bool (t1: Type.t) (t2: Type.t) =
+      ensure_boolean_type (unboxing_conversion t1);
+      ensure_boolean_type (unboxing_conversion t2);
       Type.Primitive(Type.Boolean)
     in
+    let check_exp_op_eq (t1: Type.t) (t2: Type.t) = (* 15.21 *)
+      let reference_equality (t1: Type.t) (t2: Type.t) = (* 15.21.3 *)
+        try
+          casting_conversion t1 t2;
+          Type.Primitive(Type.Boolean)
+        with _ ->
+          casting_conversion t2 t1;
+          Type.Primitive(Type.Boolean)
+      in
+      match t1, t2 with
+      | Type.Ref(rt1), Type.Ref(rt2) -> reference_equality t1 t2
+      | _, _ -> (
+        let pt1 = unboxing_conversion t1 in
+        let pt2 = unboxing_conversion t2 in
+        match pt1, pt2 with
+        | Type.Boolean, Type.Boolean -> Type.Primitive(Type.Boolean)
+        | _, _ -> ensure_numeric_type pt1; ensure_numeric_type pt2; Type.Primitive(Type.Boolean)
+      )
+    in
+    let numerical_comparison (t1: Type.t) (t2: Type.t) =
+      let pt1 = unboxing_conversion t1 in
+      let pt2 = unboxing_conversion t2 in
+      ensure_numeric_type pt1; ensure_numeric_type pt2;
+      Type.Primitive(Type.Boolean)
+    in
+    let bitwise_and_logical (t1: Type.t) (t2: Type.t) = (* 15.22 *)
+      let pt1 = unboxing_conversion t1 in
+      let pt2 = unboxing_conversion t2 in
+      match pt1, pt2 with
+      | Type.Boolean, Type.Boolean -> Type.Primitive(Type.Boolean) (* 15.22.2 *)
+      | _, _ -> binary_numeric_promotion t1 t2 (* 15.22.1 *)
+    in
+    let check_exp_shift (t1: Type.t) (t2: Type.t) = (* 15.19 *)
+      let promoted_t1 = unary_numeric_promotion t1 in
+      let promoted_t2 = unary_numeric_promotion t2 in
+      Type.Primitive(promoted_t1)
+    in
+    let t1 = check_expression env e1 in
+    let t2 = check_expression env e2 in
     match op with
-    | Op_cor -> check_exp_op_bool e1 e2
-    | Op_cand -> AST.string_of_expression_desc e1.edesc;check_exp_op_bool e1 e2
-    (*| Op_or ->
-    | Op_and ->
-    | Op_xor -> *)
-    (* | Op_eq -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_ne -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_gt -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_lt -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_ge -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_le -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_shl -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_shr -> Type.Int TODO check expression types and fix returned type *)
-    (* | Op_shrr -> Type.Int TODO check expression types and fix returned type *)
-    | Op_add -> check_exp_op_add e1 e2
-    | Op_sub -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-    | Op_mul -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-    | Op_div -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
-    | Op_mod -> binary_numeric_promotion (check_expression env e1) (check_expression env e2)
+    | Op_cor -> check_exp_op_bool t1 t2
+    | Op_cand -> check_exp_op_bool t1 t2
+    | Op_or -> bitwise_and_logical t1 t2
+    | Op_and -> bitwise_and_logical t1 t2
+    | Op_xor -> bitwise_and_logical t1 t2
+    | Op_eq -> check_exp_op_eq t1 t2
+    | Op_ne -> check_exp_op_eq t1 t2
+    | Op_gt -> numerical_comparison t1 t2
+    | Op_lt -> numerical_comparison t1 t2
+    | Op_ge -> numerical_comparison t1 t2
+    | Op_le -> numerical_comparison t1 t2
+    | Op_shl -> check_exp_shift t1 t2
+    | Op_shr -> check_exp_shift t1 t2
+    | Op_shrr -> check_exp_shift t1 t2
+    | Op_add -> check_exp_op_add t1 t2
+    | Op_sub -> binary_numeric_promotion t1 t2
+    | Op_mul -> binary_numeric_promotion t1 t2
+    | Op_div -> binary_numeric_promotion t1 t2
+    | Op_mod -> binary_numeric_promotion t1 t2
   in
   let check_expression_if env condition if_exp else_exp =
     let condition_type = unboxing_conversion (check_expression env condition)
@@ -125,6 +172,11 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
       | _ -> Type.Array(expected_type, 1)
     )
     | h::t -> if (check_expression env h) = expected_type then check_types_exp_array_init expected_type t else raise(TypeExcept.WrongType "Array init with different types")
+  in
+  let check_instanceof env exp_type ref_type = (* 15.20.2 *)
+    match exp_type, ref_type with
+    | Type.Ref(ert), Type.Ref(rt) -> check_reifiable_type ref_type; casting_conversion exp_type ref_type; Type.Primitive(Type.Boolean)
+    | _, _ -> raise(TypeExcept.WrongType "instance of except a ref type")
   in
   let expression = expression.edesc in
   match expression with
@@ -194,7 +246,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   | AST.Cast(t, e) -> raise(Failure "Expression cast not implemented") (* TODO Inheritance *)
   | AST.Type(t) -> t
   | AST.ClassOf(t) -> raise(Failure "Expression classof not implemented")
-  | AST.Instanceof(e, t) -> Type.Primitive(Type.Boolean)
+  | AST.Instanceof(e, t) -> check_instanceof env (check_expression env e) t (* 15.20.2 *)
   | AST.VoidClass -> Type.Void
 ;;
 

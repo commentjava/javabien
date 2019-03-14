@@ -91,7 +91,7 @@ shift should be ok.
 
 Parser errors
 ===
-- b = true && true;
+- b = true && true; (also <= < > >=)
 This doesn't respect operators precedence.
 ```
 AST:
@@ -133,7 +133,7 @@ Expression
                   └─ true
 ```
 
-- ~~int notseenasanarray[]; this should be of type int[]. But int[] array; works~~ Fixed
+- ~~int notseenasanarray[]; this should be of type int[]. But int[] array; works~~ Fixed in 386aa089a259ed950709cd292c15254a9872b851
 
 ```
 AstAttribute
@@ -143,11 +143,11 @@ AstAttribute
 └─ none
 ```
 
-- ~~two[] = one; This should not be parsed; The expression between [] should be mandatory~~ Fixed
+- ~~two[] = one; This should not be parsed; The expression between [] should be mandatory~~ Fixed in 386aa089a259ed950709cd292c15254a9872b851
 
-- ~~one = two[]; Same as above~~ Fixed
+- ~~one = two[]; Same as above~~ Fixed in 386aa089a259ed950709cd292c15254a9872b851
 
-- ~~emptyInit = new int[][1][]{1, 2}; This should not be parsed. Even the -v output is wrong ~~ Fixed by 88aa9f0265a5274cef0a1768755d673411428791
+- ~~emptyInit = new int[][1][]{1, 2}; This should not be parsed. Even -v output is wrong~~ Fixed in 88aa9f0265a5274cef0a1768755d673411428791
 ```
 input:
 arr = new int[2][][4]{3, 4};
