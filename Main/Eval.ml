@@ -118,17 +118,9 @@ let eq_obj mem = function
 let ne_obj mem = function
   | a, b -> Memory.add_object mem (Primitive(Boolean(a != b)));;
 
-let init_natives () =
-  let native_mem_dump (mem : 'a Memory.memory ref) : statement_return =
-    print_memory mem; Void in
-
-  let natives = Hashtbl.create 10 in
-  Hashtbl.add natives "Debug2.dumpMemory2" native_mem_dump;
-  natives;;
-
 (** Call the entryPoint of an AST tree, this function looks for the function
   * `void main(String[] args)` in the class `HelloWorld` *)
-let execute_program (p : AST.t) (args : string list) debug =
+let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string list) debug =
   (** Execute the method located at the method_id memory address *)
   let rec execute_method (mem : 'a Memory.memory ref) (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (args : Memory.memory_address list) : statement_return =
     let mem = Memory.make_memory_stack mem in
@@ -146,8 +138,6 @@ let execute_program (p : AST.t) (args : string list) debug =
       bind_args m.arguments;
       m.body mem;
     )
-    | MemDumpMethod -> print_memory mem; Void
-    | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd args)); Void
     | _ -> raise(MemoryError "Only methods are callable")
 
   and exec_st_list mem = function
@@ -429,11 +419,32 @@ let execute_program (p : AST.t) (args : string list) debug =
       }) in
       Hashtbl.add cl.methods m.mname method_addr
       )
-  in
+    and init_natives () =
+      let native_mem_dump (mem : 'a Memory.memory ref) : statement_return =
+        print_memory mem; Void in
+      let native_debug (mem : 'a Memory.memory ref) : statement_return =
+        debug (Memory.get_object_from_name mem "o"); Void in
+
+      let natives = Hashtbl.create 10 in
+      Hashtbl.add natives "Debug.dumpMemory" native_mem_dump;
+      Hashtbl.add natives "Debug.debug" native_debug;
+      natives in
+
 
   let natives = init_natives () in
   let mem = make_populated_memory () in
+
+  (* load additionnal types *)
+  List.iter (
+    fun (prog : AST.t) -> (List.iter (declare_type mem natives) prog.type_list)
+    (* fun (prog : AST.t) -> (AST.print_AST prog) *)
+    )
+  additional_asts;
+
+  (* Populate program memory *)
   List.iter (declare_type mem natives) p.type_list;
+
+  (* Entry point *)
   let main_addr = resolve_fqn mem ["HelloWorld"] in
   let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
   let m_args = [] in (* TODO: use args passed, blocked by array def *)

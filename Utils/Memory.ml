@@ -269,8 +269,6 @@ and memory_unit =
   | Primitive of m_primitive
   | Null
   | NativeMethod of m_native_method
-  | DebugClass
-  | DebugMethod
   | MemDumpMethod
 
 let string_from_memory_unit (u : memory_unit) : string =
@@ -281,9 +279,6 @@ let string_from_memory_unit (u : memory_unit) : string =
   | Null -> "null";
   | Primitive (Int i) -> string_of_int i;
   | Primitive (Boolean b) -> string_of_bool b;
-  | DebugClass -> "DebugClass"
-  | DebugMethod -> "DebugMethod"
-  | MemDumpMethod -> "DebugMethod"
 ;;
 
 let java_this : Memory.name = "this";;
@@ -322,34 +317,15 @@ let print_memory_unit u =
     Printf.printf "\t[null]\n";
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
   | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
-  | DebugClass ->
-    Printf.printf "\t[Debug class]\n"
-  | DebugMethod ->
-    Printf.printf "\t[Debug method]\n"
-  | MemDumpMethod ->
-    Printf.printf "\t[Mem Dump method]\n"
 ;;
 
 (* -> populate_mem
 Give a reference to a new memory populated with the following :
   "null" -> 0 -> Null
-  "debug" -> 1 -> debug()
 *)
 let make_populated_memory () : 'a Memory.memory ref =
   let mem = Memory.make_memory () in
   Memory.add_link_name_object mem "null" Null;
-  (* Create a debug class *)
-  let debug_m_addr = Memory.add_object mem DebugMethod in
-  let memdump_m_addr = Memory.add_object mem MemDumpMethod in
-  let debug_c_addr = Memory.add_link_name_object mem "Debug" (Class {
-    name = "Debug";
-    methods = Hashtbl.create 10;
-    attributes = Hashtbl.create 10;
-}) in
-  match Memory.get_object_from_address mem debug_c_addr with
-  | Class c ->
-      Hashtbl.add c.methods "debug" debug_m_addr;
-      Hashtbl.add c.methods "dumpMemory" memdump_m_addr;
   mem
 ;;
 
@@ -373,9 +349,6 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
     Hashtbl.remove checker o.t
   | Null -> ()
   | Primitive p -> ()
-  | DebugClass -> ()
-  | MemDumpMethod -> ()
-  | DebugMethod -> ()
 ;;
 
 let apply_garbage_collector mem keep : unit =
