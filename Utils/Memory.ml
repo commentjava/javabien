@@ -259,6 +259,9 @@ and m_native_method = {
   arguments : AST.argument list;
   body : memory_unit Memory.memory ref -> statement_return
 }
+and m_array =  {
+  values : Memory.memory_address array
+}
 and m_primitive =
   | Int of int
   | Boolean of bool
@@ -268,8 +271,8 @@ and memory_unit =
   | Object of m_object
   | Primitive of m_primitive
   | Null
+  | Array of m_array
   | NativeMethod of m_native_method
-  | MemDumpMethod
 
 let string_from_memory_unit (u : memory_unit) : string =
   match u with
@@ -315,6 +318,13 @@ let print_memory_unit u =
       o.attributes;
   | Null ->
     Printf.printf "\t[null]\n";
+  | Array a ->
+      Printf.printf "\t[array]\n";
+      Array.iter
+      (fun x ->
+        Printf.printf "\t %i\n" x;
+      )
+      a.values;
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
   | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
 ;;

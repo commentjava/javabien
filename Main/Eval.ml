@@ -3,6 +3,7 @@ open Memory
 exception NotImplemented of string;;
 exception NullException of string;;
 exception InvalidOp of string;;
+exception IndexError of string;;
 
 (** Resolve in memory a fqn of the form `classname.method` *)
 let resolve_fqn mem (fqn : string list) : Memory.memory_address =
@@ -151,14 +152,14 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
 
   (** Execute a statement in memory *)
   and execute_statement (mem : 'a Memory.memory ref) = function
-    (** TODO: Take into account the type for apparent type` *)
+    (** TODO: Take into account the type for apparent type *)
     | AST.VarDecl dl ->
       begin
         List.iter
           (fun (t, name, init) ->
-            let type_in_mem =
+            let type_in_mem = (* TODO: probably check type here, like arrray length *)
               match t with
-              | Type.Array (_, _)-> raise(NotImplemented "Statement Implemented")
+              | Type.Array (_, _) -> "array"
               | Type.Primitive _ -> "prim"
               | Type.Ref ref_type -> ref_type.tid
               | Type.Void -> raise(MemoryError "Invalid type")
@@ -229,7 +230,30 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
         })
         | _ -> raise (MemoryError "Invalid new on non class object")
       end
-    (* | AST.NewArray *)
+    | AST.NewArrayInitialized (t, expr) -> execute_expression mem expr
+    | ArrayInit (values) ->
+        let arr = Array.of_list (List.map (execute_expression mem) values) in
+        Memory.add_object mem (Array {
+          values = arr;
+        })
+    | NewArrayEmpty (t, sizes) ->
+      begin
+        let empty_value = function
+        | Type.Primitive(Int) -> Memory.add_object mem (Primitive(Int(0)))
+        | _ -> raise (NotImplemented "EmptyArray not implemented for this type") in
+        let rec repeat f = function
+        | 0 -> []
+        | n -> (f) :: repeat f (n-1) in
+        let rec build_array = function
+        | [hd] -> Memory.add_object mem (Array {
+          values = Array.of_list (repeat (empty_value t) hd);
+        })
+        | hd :: tl -> Memory.add_object mem (Array {
+          values = Array.of_list (repeat (build_array tl) hd);
+        }) in
+        let sizes_addr = List.map (execute_expression mem) sizes in
+        build_array sizes_addr
+      end
     | AST.Call (obj_name, method_name, args) ->
       begin
         let obj_addr = match obj_name with
@@ -266,10 +290,24 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
       begin
         try
         Memory.get_address_from_name mem n
-        with Not_found -> print_memory mem; raise (MemoryError ("Name " ^ n ^ "not found in scope"))
+        with Not_found -> print_memory mem; raise (MemoryError ("Name " ^ n ^ " not found in scope"))
       end
     (* | AST.ArrayInit *)
-    (* | AST.Array *)
+    | AST.Array (obj_name, attrs) ->
+        let rec fetch_obj obj_addr = function
+          | [] -> obj_addr;
+          | hd::tl -> (
+            let hd_addr = execute_expression mem hd in
+            let hd_value = match Memory.get_object_from_address mem hd_addr with
+            | Primitive (Int(p)) -> p;
+            | _ -> raise (IndexError "Unkown index") in
+            match Memory.get_object_from_address mem obj_addr with
+            | Array (a) -> fetch_obj a.values.(hd_value) tl;
+            | _ -> raise (IndexError "Unkown index");
+          ) in
+        let obj_addr = execute_expression mem obj_name in
+        fetch_obj obj_addr attrs
+
     | AST.AssignExp (e1, op, e2) ->
       begin
         redirect_expression mem e1 op (execute_expression mem e2)
@@ -362,7 +400,25 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
         res_addr
       end
     (* | AST.ArrayInit *)
-    (* | AST.Array *)
+    | AST.Array(obj_name, attrs) ->
+      let get_arr_or_raise addr =
+        match Memory.get_object_from_address mem addr with
+          | Array (a) -> a.values
+          | _ -> raise (IndexError "Unkown index") in
+      let rec fetch_prev_obj prev_obj_addr obj_addr index = function
+        | [] -> (prev_obj_addr, index);
+        | hd::tl -> (
+          let hd_addr = execute_expression mem hd in
+          let hd_value = match Memory.get_object_from_address mem hd_addr with
+          | Primitive (Int(p)) -> p;
+          | _ -> raise (IndexError "Unkown index") in
+          let a = get_arr_or_raise obj_addr in
+          fetch_prev_obj obj_addr a.(hd_value) hd_value tl;
+        ) in
+      let obj_addr = execute_expression mem obj_name in
+      let arr_addr, index = fetch_prev_obj obj_addr obj_addr 0 attrs  in
+      Array.set (get_arr_or_raise arr_addr) index e2_addr;
+      e2_addr
     (* | AST.AssignExp (e1, op, e2) -> *)
     (* | AST.Post *)
     (* | AST.Pre *)
