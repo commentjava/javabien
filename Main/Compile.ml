@@ -3,13 +3,17 @@ open Eval
 
 let debug u = Printf.printf "%s\n" (Memory.string_from_memory_unit u);;
 
+(**
+ * Return a list of files in dir and it subdirectories
+ * TODO: duplicate of Test/TestUtils.ml
+ *)
 let load_std_asts =
-  let filename = "stdlib/Debug.java" in
-  let input_file = open_in filename in
-  let lexbuf = Lexing.from_channel input_file in
-  Location.init lexbuf filename;
-  let ast = compilationUnit Lexer.token lexbuf in
-  [ast];;
+  let load_ast filename =
+    let input_file = open_in filename in
+    let lexbuf = Lexing.from_channel input_file in
+    Location.init lexbuf filename;
+    compilationUnit Lexer.token lexbuf in
+  List.map load_ast (Files.dir_contents "stdlib") ;;
 
 let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_eval args debug load_std =
   try
