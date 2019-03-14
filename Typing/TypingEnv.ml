@@ -208,6 +208,27 @@ let rec get_args_type (argstype: AST.argument list) (args: javamethodarguments) 
   )
 ;;
 
+let check_method_modifiers (modifiers: AST.modifier list) (amethod: AST.astmethod) =
+  let modifiers = env_modifier_list amethod.mmodifiers [] in
+  let rec check_modifiers_combination_list (m: AST.modifier) (l: AST.modifier list) =
+    match l with
+    | [] -> ()
+    | h::t -> check_modifiers_combination m h modifiers; check_modifiers_combination_list m t
+  in
+  check_modifiers_combination_list AST.Abstract ([
+    AST.Private; AST.Static; AST.Final; AST.Native; AST.Strictfp; AST.Synchronized
+  ]);
+  check_modifiers_combination AST.Native AST.Strictfp modifiers;
+
+  let hasBody = (List.length amethod.mbody) > 0 in
+  if List.mem  AST.Abstract modifiers && hasBody then
+    raise(TypeExcept.CannotHaveMethodBody(AST.stringOf_modifier(AST.Abstract)));
+  if List.mem AST.Native modifiers && hasBody then
+    raise(TypeExcept.CannotHaveMethodBody(AST.stringOf_modifier(AST.Native)));
+
+  modifiers
+;;
+
 let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) (isClassAbstract: bool) =
   let args_env = get_args_type amethod.margstype ({
     args_types = Env.initial();
@@ -222,16 +243,8 @@ let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) (is
     raise (TypeExcept.AbstractMethodInNormalClass(amethod.mname));
 
   (* check modifiers *)
-  let modifiers = env_modifier_list amethod.mmodifiers [] in
-  let rec check_modifiers_combination_list (m: AST.modifier) (l: AST.modifier list) =
-    match l with
-    | [] -> ()
-    | h::t -> check_modifiers_combination m h modifiers; check_modifiers_combination_list m t
-  in
-  check_modifiers_combination_list AST.Abstract ([
-    AST.Private; AST.Static; AST.Final; AST.Native; AST.Strictfp; AST.Synchronized
-  ]);
-  check_modifiers_combination AST.Native AST.Strictfp modifiers;
+  let modifiers = check_method_modifiers amethod.mmodifiers amethod in
+
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
     args = args_env;

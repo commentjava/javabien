@@ -1,6 +1,6 @@
 package tutu.titi.toto;
 
-class A {
+abstract class A {
 
     abstract synchronized void myMethod(){}
 
