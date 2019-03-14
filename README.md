@@ -63,6 +63,7 @@ shift should be ok.
 * [x] Static Attribute declaration
 * [x] Static Attribute Access
 * [ ] Inheritance
+* [ ] Native Method declaration
 
 ### Control flow
 * [x] If, else if, else

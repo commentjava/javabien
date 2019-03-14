@@ -118,11 +118,13 @@ let eq_obj mem = function
 let ne_obj mem = function
   | a, b -> Memory.add_object mem (Primitive(Boolean(a != b)));;
 
+let init_natives () =
+  let native_mem_dump (mem : 'a Memory.memory ref) : statement_return =
+    print_memory mem; Void in
 
-type statement_return =
-  | Void
-  | Return of Memory.memory_address
-  | Raise (* TODO *)
+  let natives = Hashtbl.create 10 in
+  Hashtbl.add natives "Debug2.dumpMemory2" native_mem_dump;
+  natives;;
 
 (** Call the entryPoint of an AST tree, this function looks for the function
   * `void main(String[] args)` in the class `HelloWorld` *)
@@ -130,13 +132,19 @@ let execute_program (p : AST.t) (args : string list) debug =
   (** Execute the method located at the method_id memory address *)
   let rec execute_method (mem : 'a Memory.memory ref) (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (args : Memory.memory_address list) : statement_return =
     let mem = Memory.make_memory_stack mem in
-    match (Memory.get_object_from_address mem method_addr) with
-    | Method m -> (
+    let bind_args arguments =
       List.iter2 (
         fun (argn : AST.argument) argv -> Memory.add_link_name_address mem argn.pident argv
-      ) m.arguments args;
-      Memory.add_link_name_address mem java_this caller_id;
+      ) arguments args;
+      Memory.add_link_name_address mem java_this caller_id in
+    match (Memory.get_object_from_address mem method_addr) with
+    | Method m -> (
+      bind_args m.arguments;
       exec_st_list mem m.body;
+    )
+    | NativeMethod m -> (
+      bind_args m.arguments;
+      m.body mem;
     )
     | MemDumpMethod -> print_memory mem; Void
     | DebugMethod -> debug (Memory.get_object_from_address mem (List.hd args)); Void
@@ -378,14 +386,15 @@ let execute_program (p : AST.t) (args : string list) debug =
     | _ -> raise(NotImplemented "Redirect Expression Implemented")
 
   (** Declare a new Java type. Only java Classes are implemented *)
-  and declare_type mem (t : AST.asttype) : unit =
+  and declare_type mem natives (t : AST.asttype) : unit =
     match t.info with
     | Class cl ->
       let class_addr = Memory.add_link_name_object mem t.id (Class {
+        name = t.id;
         methods = Hashtbl.create 10;
         attributes = Hashtbl.create 10;
       }) in
-      List.iter (declare_method mem class_addr) cl.cmethods;
+      List.iter (declare_method mem natives class_addr) cl.cmethods;
       List.iter (declare_attr mem class_addr) cl.cattributes
     | Inter -> ()
 
@@ -401,23 +410,35 @@ let execute_program (p : AST.t) (args : string list) debug =
     }
 
   (** Create a new method for the class located at `class_addr` *)
-  and declare_method mem (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
-    let method_addr = Memory.add_object mem (Method{
-      body = m.mbody;
-      arguments = m.margstype;
-    }) in
+  and declare_method mem natives (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
     let cl = get_class_from_address mem class_addr in
-    Hashtbl.add cl.methods m.mname method_addr
+    match List.exists (fun x -> x == AST.Native) m.mmodifiers with
+    | false -> (
+      let method_addr = Memory.add_object mem (Method{
+        body = m.mbody;
+        arguments = m.margstype;
+      }) in
+      Hashtbl.add cl.methods m.mname method_addr
+      )
+    | true -> (
+      let native_name = String.concat "." [cl.name; m.mname] in  (* TODO: handle classes in classes *)
+      let native_method = Hashtbl.find natives native_name in
+      let method_addr = Memory.add_object mem (NativeMethod{
+        body = native_method;
+        arguments = m.margstype;
+      }) in
+      Hashtbl.add cl.methods m.mname method_addr
+      )
   in
 
+  let natives = init_natives () in
   let mem = make_populated_memory () in
-  List.iter (declare_type mem) p.type_list;
+  List.iter (declare_type mem natives) p.type_list;
   let main_addr = resolve_fqn mem ["HelloWorld"] in
   let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
   let m_args = [] in (* TODO: use args passed, blocked by array def *)
   execute_method mem main_addr main_method_addr m_args;
   apply_garbage_collector mem [];
   (* print_memory mem; *)
-
 ;;
 

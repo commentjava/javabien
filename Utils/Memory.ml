@@ -233,32 +233,42 @@ end
 
 (***** Object definition ******************************************)
 
-type m_attr = {
+type statement_return =
+  | Void
+  | Return of Memory.memory_address
+  | Raise (* TODO *)
+and m_attr = {
   v : Memory.memory_address;
   modifiers : AST.modifier list;
 }
-type m_class = {
+and m_class = {
   (* attributes : (name, memory_address) Hashtbl.t *)
+  name : string;
   methods : (Memory.name, Memory.memory_address) Hashtbl.t;
   attributes : (Memory.name, m_attr) Hashtbl.t
 }
-type m_method = {
+and m_method = {
   arguments : AST.argument list;
   body : AST.statement list
 }
-type m_object = {
+and m_object = {
   t : Memory.memory_address;
   attributes : (Memory.name, m_attr) Hashtbl.t
 }
-type m_primitive =
+and m_native_method = {
+  arguments : AST.argument list;
+  body : memory_unit Memory.memory ref -> statement_return
+}
+and m_primitive =
   | Int of int
   | Boolean of bool
-type memory_unit =
+and memory_unit =
   | Class of m_class
   | Method of m_method
   | Object of m_object
   | Primitive of m_primitive
   | Null
+  | NativeMethod of m_native_method
   | DebugClass
   | DebugMethod
   | MemDumpMethod
@@ -298,6 +308,8 @@ let print_memory_unit u =
   | Method m ->
     Printf.printf "\t[Method]\n";
     List.iter (AST.print_statement "\t") m.body;
+  | NativeMethod m ->
+    Printf.printf "\t[Native Method]\n";
   | Object o ->
     Printf.printf "\t[Object]\n";
     Printf.printf "\tInstance of: %i\n" o.t;
@@ -330,6 +342,7 @@ let make_populated_memory () : 'a Memory.memory ref =
   let debug_m_addr = Memory.add_object mem DebugMethod in
   let memdump_m_addr = Memory.add_object mem MemDumpMethod in
   let debug_c_addr = Memory.add_link_name_object mem "Debug" (Class {
+    name = "Debug";
     methods = Hashtbl.create 10;
     attributes = Hashtbl.create 10;
 }) in
@@ -354,6 +367,7 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
       )
       c.methods
   | Method m -> ()
+  | NativeMethod m -> ()
   | Object o ->
     remove_addr_from_checker mem (Memory.get_object_from_address mem o.t) checker;
     Hashtbl.remove checker o.t
