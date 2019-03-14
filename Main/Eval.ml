@@ -107,6 +107,17 @@ let shr_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lsr i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
+(* Operations on object *)
+(** Verify in memory that two addresses are equal
+ * TODO: unboxing *)
+let eq_obj mem = function
+  | a, b -> Memory.add_object mem (Primitive(Boolean(a == b)));;
+
+(** Verify in memory that two addresses are not equal
+ * TODO: unboxing *)
+let ne_obj mem = function
+  | a, b -> Memory.add_object mem (Primitive(Boolean(a != b)));;
+
 
 type statement_return =
   | Void
@@ -172,7 +183,7 @@ let execute_program (p : AST.t) (args : string list) debug =
         | Void -> []
         | Return e -> [e]
         | Raise -> raise (NotImplemented "Exception not implemented") in
-        apply_garbage_collector mem gc_keep;
+        (* apply_garbage_collector mem gc_keep; *)
         res
       end
     | AST.Nop -> Void
@@ -271,31 +282,35 @@ let execute_program (p : AST.t) (args : string list) debug =
       begin
         let e1_addr = execute_expression mem e1 in
         let e2_addr = execute_expression mem e2 in
-        let (e1_val, e2_val) =
-        match (Memory.get_object_from_address mem e1_addr), (Memory.get_object_from_address mem e2_addr) with
-          | Primitive(p1), Primitive(p2) -> p1, p2
-          | _ -> raise (InvalidOp "Operations can only be done on primitives")
-        in
-        let op = match op with
-        | AST.Op_cor -> cor_primitives
-        | AST.Op_cand -> cand_primitives
-        | AST.Op_or -> or_primitives
-        | AST.Op_and -> and_primitives
-        | AST.Op_xor -> xor_primitives
-        | AST.Op_eq -> eq_primitives
-        | AST.Op_ne -> ne_primitives
-        | AST.Op_gt -> gt_primitives
-        | AST.Op_lt -> lt_primitives
-        | AST.Op_ge -> ge_primitives
-        | AST.Op_le -> le_primitives
-        | AST.Op_shl -> shl_primitives
-        | AST.Op_shr -> shr_primitives
-        | AST.Op_add -> add_primitives
-        | AST.Op_sub -> sub_primitives
-        | AST.Op_mul -> mul_primitives
-        | AST.Op_div -> div_primitives
-        | AST.Op_mod -> mod_primitives in
-        op mem (e1_val, e2_val)
+        let (e1_val, e2_val) = ((Memory.get_object_from_address mem e1_addr),
+                               (Memory.get_object_from_address mem e2_addr)) in
+        match e1_val, e2_val, op with
+        | Primitive(p1), Primitive(p2), AST.Op_cor -> cor_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_cand -> cand_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_or -> or_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_and -> and_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_xor -> xor_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_eq -> eq_primitives mem (p1, p2)
+        | Object(_), Object(_), AST.Op_eq -> eq_obj mem (e1_addr, e2_addr)
+        | Null, Null, AST.Op_eq -> eq_obj mem (0, 0)
+        | Null, Object(_), AST.Op_eq -> eq_obj mem (0, e2_addr)
+        | Object(_), Null, AST.Op_eq -> eq_obj mem (e1_addr, 0)
+        | Primitive(p1), Primitive(p2), AST.Op_ne -> ne_primitives mem (p1, p2)
+        | Object(_), Object(_), AST.Op_ne -> ne_obj mem (e1_addr, e2_addr)
+        | Null, Null, AST.Op_ne -> ne_obj mem (0, 0)
+        | Null, Object(_), AST.Op_ne -> ne_obj mem (0, e2_addr)
+        | Object(_), Null, AST.Op_ne -> ne_obj mem (e1_addr, 0)
+        | Primitive(p1), Primitive(p2), AST.Op_gt -> gt_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_lt -> lt_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_ge -> ge_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_le -> le_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_shl -> shl_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_shr -> shr_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_add -> add_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_sub -> sub_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_mul -> mul_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_div -> div_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_mod -> mod_primitives mem (p1, p2)
       end
     (* | AST.CondOp *)
     (* | AST.Cast *)

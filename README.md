@@ -53,6 +53,7 @@ shift should be ok.
   * [ ] Element access
 * [ ] Casting
 * [ ] Exceptions
+* [ ] Object unboxing
 
 ### Class language
 * [x] Class declaration
@@ -72,7 +73,6 @@ shift should be ok.
 * [x] Method return
 * [ ] Method overload
 * [ ] Inheritance
-* [ ] Object unboxing
 
 ### Memory
 * [x] Simple memory heap
