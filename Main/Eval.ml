@@ -1,11 +1,11 @@
 open Memory
+open Primitives
 
 exception NotImplemented of string;;
 exception NullException of string;;
-exception InvalidOp of string;;
 exception IndexError of string;;
 
-(** Resolve in memory a fqn of the form `classname.method` *)
+(** Resolve in memory a fqn of the form `parentclass.classname.method` *)
 let resolve_fqn mem (fqn : string list) : Memory.memory_address =
   let obj_name = List.hd fqn in
   let obj_addr = Memory.get_address_from_name mem obj_name in
@@ -25,99 +25,6 @@ let resolve_fqn mem (fqn : string list) : Memory.memory_address =
     obj_addr
     (List.tl fqn)
 ;;
-
-let cor_primitives mem = function
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 || i2)));
-  | _ -> raise (InvalidOp "cor: Cannot bool those primitives");;
-
-let cand_primitives mem = function
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 && i2)));
-  | _ -> raise (InvalidOp "cand: Cannot bool those primitives");;
-
-let or_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lor i2)));
-  | _ -> raise (InvalidOp "or: Cannot bool those primitives");;
-
-let and_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 land i2)));
-  | _ -> raise (InvalidOp "and: Cannot bool those primitives");;
-
-let xor_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lxor i2)));
-  | _ -> raise (InvalidOp "xor: Cannot bool those primitives");;
-
-(** Operation to add two Primitive types *)
-let add_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 + i2)));
-  | _ -> raise (InvalidOp "Cannot add those primitives");;
-
-(** Operation to add two Primitive types *)
-let sub_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 - i2)));
-  | _ -> raise (InvalidOp "Cannot sub those primitives");;
-
-(** Operation to multiply two Primitive types *)
-let mul_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 * i2)));
-  | _ -> raise (InvalidOp "Cannot mul those primitives");;
-
-(** Operation to divide two Primitive types *)
-let div_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 * i2)));
-  | _ -> raise (InvalidOp "Cannot mul those primitives");;
-
-(** Operation to mod two Primitive types *)
-let mod_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 mod i2)));
-  | _ -> raise (InvalidOp "Cannot mod those primitives");;
-
-let eq_primitives mem = function
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 == i2)));
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 == i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-let ne_primitives mem = function
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 != i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-let gt_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 > i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 > i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-let lt_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 < i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 < i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-let ge_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 >= i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 >= i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-let le_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 <= i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 <= i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-let shl_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lsl i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-let shr_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 lsr i2)));
-  | _ -> raise (InvalidOp "Cannot bool those primitives");;
-
-(* Operations on object *)
-(** Verify in memory that two addresses are equal
- * TODO: unboxing *)
-let eq_obj mem = function
-  | a, b -> Memory.add_object mem (Primitive(Boolean(a == b)));;
-
-(** Verify in memory that two addresses are not equal
- * TODO: unboxing *)
-let ne_obj mem = function
-  | a, b -> Memory.add_object mem (Primitive(Boolean(a != b)));;
 
 (** Call the entryPoint of an AST tree, this function looks for the function
   * `void main(String[] args)` in the class `HelloWorld` *)
@@ -147,12 +54,12 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
       match execute_statement mem hd with
       | Void -> exec_st_list mem tl
       | Return e -> Return e
-      | Raise -> raise (NotImplemented "Exception not implemented")
+      | Raise -> raise (NotImplemented "Exceptions are not implemented")
     )
 
   (** Execute a statement in memory *)
   and execute_statement (mem : 'a Memory.memory ref) = function
-    (** TODO: Take into account the type for apparent type *)
+    (** TODO: Take into account the apparent type *)
     | AST.VarDecl dl ->
       begin
         List.iter
@@ -228,7 +135,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
           t = class_addr;
           attributes = copy_non_static_attrs mem cl
         })
-        | _ -> raise (MemoryError "Invalid new on non class object")
+        | _ -> raise (MemoryError "Invalid new on non-class object")
       end
     | AST.NewArrayInitialized (t, expr) -> execute_expression mem expr
     | ArrayInit (values) ->
@@ -265,7 +172,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
         match execute_method mem obj_addr method_addr args_addr with
         | Void -> java_void
         | Return e -> e
-        | Raise -> raise (NotImplemented "Exception not implemented")
+        | Raise -> raise (NotImplemented "Exception are not implemented")
       end
     | AST.Attr (caller, aname) ->
       begin
@@ -429,7 +336,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
     (* | AST.ClassOf *)
     (* | AST.InstanceOf *)
     (* | AST.VoidClass *)
-    | _ -> raise(NotImplemented "Redirect Expression Implemented")
+    | _ -> raise(NotImplemented "Redirect Expression not Implemented")
 
   (** Declare a new Java type. Only java Classes are implemented *)
   and declare_type mem natives (t : AST.asttype) : unit =
@@ -442,7 +349,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
       }) in
       List.iter (declare_method mem natives class_addr) cl.cmethods;
       List.iter (declare_attr mem class_addr) cl.cattributes
-    | Inter -> ()
+    | Inter -> raise (NotImplemented "Interfaces are not implemented")
 
   (** Declare a new class attribute *)
   and declare_attr mem (class_addr : Memory.memory_address) (a : AST.astattribute) : unit =
@@ -474,23 +381,12 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
         arguments = m.margstype;
       }) in
       Hashtbl.add cl.methods m.mname method_addr
-      )
-    and init_natives () =
-      let native_mem_dump (mem : 'a Memory.memory ref) : statement_return =
-        print_memory mem; Void in
-      let native_debug (mem : 'a Memory.memory ref) : statement_return =
-        debug (Memory.get_object_from_name mem "o"); Void in
+      ) in
 
-      let natives = Hashtbl.create 10 in
-      Hashtbl.add natives "Debug.dumpMemory" native_mem_dump;
-      Hashtbl.add natives "Debug.debug" native_debug;
-      natives in
-
-
-  let natives = init_natives () in
+  let natives = Natives.init_natives debug in
   let mem = make_populated_memory () in
 
-  (* load additionnal types *)
+  (* load additionnal types (e.g. stdlib) *)
   List.iter (
     fun (prog : AST.t) -> (List.iter (declare_type mem natives) prog.type_list)
     (* fun (prog : AST.t) -> (AST.print_AST prog) *)
