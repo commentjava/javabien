@@ -1,6 +1,7 @@
 let verbose = ref false
 let doPrintAST = ref false
 let skip_type_checking = ref false
+let no_std_lib = ref false
 
 let get_file str =
   let temp2 = Filename.check_suffix str ".java" in
@@ -26,7 +27,7 @@ let compile str =
 (*
     print_endline "opening file";
  *)
-    Compile.execute lexbuf !verbose !doPrintAST !skip_type_checking;
+Compile.execute lexbuf !verbose !doPrintAST !skip_type_checking (not !no_std_lib);
     close_in (input_file)
   with Sys_error s ->
     print_endline ("Can't find file '" ^ file ^ "'")
@@ -35,5 +36,10 @@ let () =
   (*
   print_endline "miniJava compiler";
    *)
-  Arg.parse ["-v",Arg.Set verbose,"verbose mode" ; "-ast",Arg.Set doPrintAST,"print AST" ; "-skip-tc",Arg.Set skip_type_checking,"skip type checking"] compile ""
+  Arg.parse [
+    "-v",Arg.Set verbose,"verbose mode" ;
+    "-ast",Arg.Set doPrintAST,"print AST" ;
+    "-skip-tc",Arg.Set skip_type_checking,"skip type checking";
+    "-no-stdlib",Arg.Set no_std_lib,"Do not load stdlib";
+  ] compile ""
 

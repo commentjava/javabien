@@ -265,6 +265,7 @@ and m_array =  {
 and m_primitive =
   | Int of int
   | Boolean of bool
+  | Char of char
 and memory_unit =
   | Class of m_class
   | Method of m_method
@@ -280,8 +281,10 @@ let string_from_memory_unit (u : memory_unit) : string =
   | Method m -> "Method";
   | Object o -> "Object";  (* TODO: use to_string method *)
   | Null -> "null";
+  | Array a -> "Array: " ^ String.concat " ; " (Array.to_list (Array.map string_of_int a.values));
   | Primitive (Int i) -> string_of_int i;
   | Primitive (Boolean b) -> string_of_bool b;
+  | Primitive (Char c) -> String.make 1 c;
 ;;
 
 let java_this : Memory.name = "this";;
@@ -326,6 +329,7 @@ let print_memory_unit u =
       )
       a.values;
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
+  | Primitive (Char c) -> Printf.printf "\t[CHAR] %c\n" c;
   | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
 ;;
 

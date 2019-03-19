@@ -35,8 +35,8 @@ let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_ev
       Error.report_error e;
       Location.print l;;
 
-let execute lexbuf verbose doPrintAST skip_type_checking =
-  _execute lexbuf verbose doPrintAST false skip_type_checking false [] debug true
+let execute lexbuf verbose doPrintAST skip_type_checking load_std =
+  _execute lexbuf verbose doPrintAST false skip_type_checking false [] debug load_std
 
 (* Execute only type-checking *)
 let execute_tc lexbuf =

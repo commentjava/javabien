@@ -191,6 +191,22 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
         match v with
         | AST.Int i -> Memory.add_object mem (Primitive(Int(int_of_string i)))
         | AST.Boolean b -> Memory.add_object mem (Primitive(Boolean(b)))
+        | AST.Char (Some c) -> Memory.add_object mem (Primitive(Char(c)))
+        | AST.Char (None) -> Memory.add_object mem (Primitive(Char(' ')))
+        | AST.String s ->
+            let str_cl_addr = Memory.get_address_from_name mem "String" in
+            let str_cl = get_class_from_address mem str_cl_addr in
+            let str_obj = (Object{
+              t = str_cl_addr;
+              attributes = copy_non_static_attrs mem str_cl;
+            }) in
+            let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
+            (List.init (String.length s) (String.get s)) in
+            let str_mem = Memory.add_object mem (Array {
+              values = Array.of_list str_v;
+            }) in
+            set_attribute_value_address mem str_obj "value" str_mem;
+            Memory.add_object mem str_obj
         | _ -> 0
       end
     | AST.Name n ->
@@ -402,6 +418,5 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
   let m_args = [] in (* TODO: use args passed, blocked by array def *)
   execute_method mem main_addr main_method_addr m_args;
   apply_garbage_collector mem [];
-  (* print_memory mem; *)
 ;;
 
