@@ -30,10 +30,12 @@ let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_ev
   with
     | Error ->
       print_string "Syntax error: ";
-      Location.print (Location.curr lexbuf)
+      Location.print (Location.curr lexbuf);
+      raise(Failure("Syntax Error"))
     | Error.Error(e,l) ->
       Error.report_error e;
-      Location.print l;;
+      Location.print l;
+      raise(Error.Error(e,l));;
 
 let execute lexbuf verbose doPrintAST skip_type_checking entry_point args load_std =
   _execute lexbuf verbose doPrintAST false skip_type_checking false entry_point args debug load_std
