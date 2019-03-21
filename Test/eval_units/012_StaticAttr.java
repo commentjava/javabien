@@ -9,7 +9,7 @@ class MyClass {
         static int st = 12;
 }
 
-class HelloWorld {
+class Main {
 
         void main () {
                 MyClass a = new MyClass();

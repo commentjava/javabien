@@ -44,7 +44,7 @@ class Stack {
 
 }
 
-class HelloWorld {
+class StackMain {
         static void main() {
                 Stack s = new Stack();
                 int i = 0;

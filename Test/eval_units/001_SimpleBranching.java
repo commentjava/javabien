@@ -1,7 +1,7 @@
 //: true
 //: 4
 
-class HelloWorld {
+class Main {
         static void main() {
                 boolean a = true;
                 Debug.debug(a);

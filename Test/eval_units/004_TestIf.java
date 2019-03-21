@@ -1,6 +1,6 @@
 //: 2
 
-class HelloWorld {
+class Main {
         static void main() {
                 int a = 1;
                 if (true) {

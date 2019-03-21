@@ -2,6 +2,7 @@ let verbose = ref false
 let doPrintAST = ref false
 let skip_type_checking = ref false
 let no_std_lib = ref false
+let forced_main_class = ref ""
 
 let get_file str =
   let temp2 = Filename.check_suffix str ".java" in
@@ -19,15 +20,15 @@ let get_file str =
   file, filename
 
 let compile str =
-  let (file, filename) = get_file str in
+  let (file, class_name) = get_file str in
+  let main_class = match !forced_main_class with
+  | "" -> class_name
+  | c -> c in
   try
     let input_file = open_in file in
     let lexbuf = Lexing.from_channel input_file in
     Location.init lexbuf file;
-(*
-    print_endline "opening file";
- *)
-Compile.execute lexbuf !verbose !doPrintAST !skip_type_checking (not !no_std_lib);
+    Compile.execute lexbuf !verbose !doPrintAST !skip_type_checking main_class [] (not !no_std_lib);
     close_in (input_file)
   with Sys_error s ->
     print_endline ("Can't find file '" ^ file ^ "'")
@@ -41,5 +42,6 @@ let () =
     "-ast",Arg.Set doPrintAST,"print AST" ;
     "-skip-tc",Arg.Set skip_type_checking,"skip type checking";
     "-no-stdlib",Arg.Set no_std_lib,"Do not load stdlib";
+    "-main-class",Arg.Set_string forced_main_class ,"Specify main class, default to filename";
   ] compile ""
 

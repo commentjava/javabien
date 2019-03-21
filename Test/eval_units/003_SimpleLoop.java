@@ -8,7 +8,7 @@
 //: 8
 //: 9
 //: 10
-class HelloWorld {
+class Main {
         static void main() {
                 int a = 0;
                 while (a < 10) {

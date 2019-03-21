@@ -9,7 +9,7 @@
 class X {
         int x;
 }
-class HelloWorld {
+class Main {
         static void main() {
                 int[] a = {1, 2, 3};
                 int b = a[0];

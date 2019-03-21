@@ -4,11 +4,14 @@ open Primitives
 exception NotImplemented of string;;
 exception NullException of string;;
 exception IndexError of string;;
+exception CannotFindSymbol of string;;
 
 (** Resolve in memory a fqn of the form `parentclass.classname.method` *)
 let resolve_fqn mem (fqn : string list) : Memory.memory_address =
   let obj_name = List.hd fqn in
-  let obj_addr = Memory.get_address_from_name mem obj_name in
+  let obj_addr =try
+    Memory.get_address_from_name mem obj_name
+  with Not_found -> raise (CannotFindSymbol ("Cannot find symbol " ^ obj_name)) in
   List.fold_left
     (fun obj_id name ->
       match (Memory.get_object_from_address mem obj_addr) with
@@ -27,8 +30,8 @@ let resolve_fqn mem (fqn : string list) : Memory.memory_address =
 ;;
 
 (** Call the entryPoint of an AST tree, this function looks for the function
-  * `void main(String[] args)` in the class `HelloWorld` *)
-let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string list) debug =
+  * `void main(String[] args)` in the class `entry_point` *)
+let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : string) (args : string list) debug =
   (** Execute the method located at the method_id memory address *)
   let rec execute_method (mem : 'a Memory.memory ref) (caller_id : Memory.memory_address) (method_addr : Memory.memory_address) (args : Memory.memory_address list) : statement_return =
     let mem = Memory.make_memory_stack mem in
@@ -413,8 +416,8 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (args : string li
   List.iter (declare_type mem natives) p.type_list;
 
   (* Entry point *)
-  let main_addr = resolve_fqn mem ["HelloWorld"] in
-  let main_method_addr = resolve_fqn mem ["HelloWorld"; "main"] in
+  let main_addr = resolve_fqn mem [entry_point] in
+  let main_method_addr = resolve_fqn mem [entry_point; "main"] in
   let m_args = [] in (* TODO: use args passed, blocked by array def *)
   execute_method mem main_addr main_method_addr m_args;
   apply_garbage_collector mem [];

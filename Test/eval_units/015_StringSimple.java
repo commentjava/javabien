@@ -5,7 +5,7 @@
 //: t
 //: y
 
-class HelloWorld {
+class Main {
         static void main() {
                 String a = "azerty";
                 int i = 0;

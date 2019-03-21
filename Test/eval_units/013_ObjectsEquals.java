@@ -11,7 +11,7 @@ class C {
         int a;
 }
 
-class HelloWorld {
+class Main {
         static void main() {
                 C c1 = new C();
                 c1.a = 0;

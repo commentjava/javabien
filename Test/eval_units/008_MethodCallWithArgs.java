@@ -6,7 +6,7 @@ class TestClass {
         }
 }
 
-class HelloWorld {
+class Main {
         static void main() {
                 int alpha = 2;
                 int beta = 3;

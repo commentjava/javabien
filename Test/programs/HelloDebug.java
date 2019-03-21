@@ -1,5 +1,6 @@
-class HelloWorld {
-        void main(String[] args) {
-                debug(5);
+class HelloDebug {
+        void main() {
+                Debug.debug(5);
+                Debug.dumpMemory();
         }
 }

@@ -6,7 +6,7 @@ class MyObject {
 class YourObject {
 }
 
-class HelloWorld {
+class Main {
         static void main() {
                 MyObject obj;
                 MyObject obj2 = new MyObject();

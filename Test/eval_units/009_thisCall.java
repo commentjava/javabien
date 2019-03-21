@@ -15,7 +15,7 @@ class TestClass {
         }
 }
 
-class HelloWorld {
+class Main {
         static void main() {
                 int a = 2;
                 TestClass t = new TestClass();

@@ -144,6 +144,44 @@ state of the program memory in place. The static java method `Debug.debug(var)`
 will print a java name as it is seen in  memory. Both methods can be used
 anywhere in a program.
 
+### Evaluation tests
+
+Using the receipe `make test-EvalUnitTest.byte` it is possible to run a unit
+test suite against a list of files located in the `Test/eval_units/` folder.
+This tests will check that the outputs of `Debug.debug(Object o)` matches with
+the comment lines starting with `//:` located at the top of the file. For
+example the following test will pass:
+
+```java
+//: 1
+
+class Main {
+        static void main() {
+                Debug.debug(1);
+        }
+}
+```
+
+While the following one will fail
+```java
+//: 5
+
+class Main {
+        static void main() {
+                Debug.debug(1);
+        }
+}
+```
+
+This test suite allow us to verify that the output of a script matches the
+expected one.
+
+To launch a specific unit test, the `main-class` argument can be used:
+```bash
+./Main.byte -skip-tc -main-class Main Test/eval_units/000_VarDeclaration.java
+```
+
+
 ## TODO list
 
 ### AST evaluation

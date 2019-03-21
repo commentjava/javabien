@@ -15,7 +15,7 @@ let load_std_asts =
     compilationUnit Lexer.token lexbuf in
   List.map load_ast (Files.dir_contents "stdlib") ;;
 
-let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_eval args debug load_std =
+let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_eval entry_point args debug load_std =
   try
     let ast = compilationUnit Lexer.token lexbuf in
 
@@ -26,7 +26,7 @@ let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_ev
     if doPrintAST then AST.print_AST ast;
     let ast = if skip_type_checking then ast else TypeChecker.typing ast doPrintTypeEnv in
     if verbose then AST.print_program ast;
-    if not skip_eval then execute_program ast std_asts args debug (* TODO: change that to typed_ast *)
+    if not skip_eval then execute_program ast std_asts entry_point args debug (* TODO: change that to typed_ast *)
   with
     | Error ->
       print_string "Syntax error: ";
@@ -35,12 +35,12 @@ let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_ev
       Error.report_error e;
       Location.print l;;
 
-let execute lexbuf verbose doPrintAST skip_type_checking load_std =
-  _execute lexbuf verbose doPrintAST false skip_type_checking false [] debug load_std
+let execute lexbuf verbose doPrintAST skip_type_checking entry_point args load_std =
+  _execute lexbuf verbose doPrintAST false skip_type_checking false entry_point args debug load_std
 
 (* Execute only type-checking *)
 let execute_tc lexbuf =
-  _execute lexbuf false false true false true [] debug false
+  _execute lexbuf false false true false true "" [] debug false
 
-let custom_exec lexbuf verbose doPrintAST skip_type_checking skip_eval args debug load_std =
-  _execute lexbuf verbose doPrintAST false skip_type_checking skip_eval args debug load_std
+let custom_exec lexbuf verbose doPrintAST skip_type_checking skip_eval entry_point args debug load_std =
+  _execute lexbuf verbose doPrintAST false skip_type_checking skip_eval entry_point args debug load_std

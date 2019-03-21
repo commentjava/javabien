@@ -3,7 +3,7 @@
 //: 5
 //: 7
 //: 9
-class HelloWorld {
+class Main {
         static void main() {
                 int a = 2;
                 int i = 0;

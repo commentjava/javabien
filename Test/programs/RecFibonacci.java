@@ -10,9 +10,9 @@ class Fib {
         }
 }
 
-class HelloWorld {
+class RecFibonacci {
         static void main() {
-                int N = 30;;
+                int N = 22;;
                 Fib f = new Fib();
                 int res = f.fib(N); 
                 // Debug.dumpMemory();

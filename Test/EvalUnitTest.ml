@@ -37,7 +37,7 @@ let execute filename =
     Location.init lexbuf filename;
     let debug_result = ref [] in
     let debug = create_debug debug_result in
-    Compile.custom_exec lexbuf false false true false [] debug true;
+    Compile.custom_exec lexbuf false false true false "Main" [] debug true;
     seek_in input_file 0;
     check_debug input_file debug_result;
     close_in (input_file)

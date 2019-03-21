@@ -1,7 +1,7 @@
 //: 10
 //: 11
 
-class HelloWorld {
+class Main {
 
         void main () {
                 int a = 10;
