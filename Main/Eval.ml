@@ -229,20 +229,24 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         | AST.Boolean b -> Memory.add_object mem (Primitive(Boolean(b)))
         | AST.Char (Some c) -> Memory.add_object mem (Primitive(Char(c)))
         | AST.Char (None) -> Memory.add_object mem (Primitive(Char(' ')))
-        (*| AST.String s ->
+        | AST.String s ->
             let str_cl_addr = Memory.get_address_from_name mem "String" in
             let str_cl = get_class_from_address mem str_cl_addr in
             let str_obj = (Object{
               t = str_cl_addr;
               attributes = copy_non_static_attrs mem str_cl;
             }) in
+            let explode str =
+              let rec exp i l =
+                if i < 0 then l else exp (i - 1) (str.[i] :: l) in
+              exp (String.length str - 1) [] in
             let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
-            (List.init (String.length s) (String.get s)) in
+            (explode s) in
             let str_mem = Memory.add_object mem (Array {
               values = Array.of_list str_v;
             }) in
             set_attribute_value_address mem str_obj "value" str_mem;
-            Memory.add_object mem str_obj*)
+            Memory.add_object mem str_obj
         | _ -> 0
       end
     | AST.Name n ->
