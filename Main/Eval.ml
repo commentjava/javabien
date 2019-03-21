@@ -108,7 +108,34 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         run_while cond body;
         Void
       end
-    (* | AST.For *)
+    | AST.For (init, cond, update_expr, body) ->
+      begin
+        let mem = Memory.make_empiled_memory mem in
+        List.iter
+          ( fun (t, name, expr) ->
+            match expr with
+            | None -> (Memory.add_link_name_object mem name Null; ())
+            | Some(e) -> Memory.add_link_name_address mem name (execute_expression mem e)
+          )
+          init;
+        let rec run_for (() : unit) =
+          let res =
+            match cond with
+            | None -> Primitive(Boolean(true))
+            | Some(c) -> Memory.get_object_from_address mem (execute_expression mem c)
+          in
+          match res with
+          | Primitive(Boolean(true)) ->
+            begin
+              execute_statement mem body;
+              List.map (execute_expression mem) update_expr;
+              run_for ()
+            end
+          | Primitive(Boolean(false)) -> ()
+        in
+        run_for ();
+        Void
+      end
     | AST.If (cond, is_true, is_false) ->
       begin
         let mem = Memory.make_empiled_memory mem in
@@ -202,7 +229,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         | AST.Boolean b -> Memory.add_object mem (Primitive(Boolean(b)))
         | AST.Char (Some c) -> Memory.add_object mem (Primitive(Char(c)))
         | AST.Char (None) -> Memory.add_object mem (Primitive(Char(' ')))
-        | AST.String s ->
+        (*| AST.String s ->
             let str_cl_addr = Memory.get_address_from_name mem "String" in
             let str_cl = get_class_from_address mem str_cl_addr in
             let str_obj = (Object{
@@ -215,7 +242,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
               values = Array.of_list str_v;
             }) in
             set_attribute_value_address mem str_obj "value" str_mem;
-            Memory.add_object mem str_obj
+            Memory.add_object mem str_obj*)
         | _ -> 0
       end
     | AST.Name n ->
