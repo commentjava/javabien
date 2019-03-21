@@ -244,6 +244,7 @@ and m_attr = {
 and m_class = {
   (* attributes : (name, memory_address) Hashtbl.t *)
   name : string;
+  constructors : Memory.memory_address list;
   methods : (Memory.name, Memory.memory_address) Hashtbl.t;
   attributes : (Memory.name, m_attr) Hashtbl.t
 }

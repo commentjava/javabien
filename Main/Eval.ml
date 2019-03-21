@@ -132,12 +132,18 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     match expr.edesc with
     | AST.New (None, fqn, args) ->
       begin
+        let args_addr = List.map (fun e -> execute_expression mem e) args in
         let class_addr = resolve_fqn mem fqn in
         match Memory.get_object_from_address mem class_addr with
-        | Class cl -> Memory.add_object mem (Object {
-          t = class_addr;
-          attributes = copy_non_static_attrs mem cl
-        })
+        | Class cl -> (
+          let obj_addr = Memory.add_object mem (Object {
+            t = class_addr;
+            attributes = copy_non_static_attrs mem cl
+          }) in
+          match cl.constructors with
+          | [] -> obj_addr;
+          | hd::tl -> execute_method mem obj_addr hd args_addr; obj_addr; (* TODO: This is  a hack because we do not handle method overloading *)
+        )
         | _ -> raise (MemoryError "Invalid new on non-class object")
       end
     | AST.NewArrayInitialized (t, expr) -> execute_expression mem expr
@@ -361,8 +367,10 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
   and declare_type mem natives (t : AST.asttype) : unit =
     match t.info with
     | Class cl ->
+      let constructors = List.map (declare_constructor mem) cl.cconsts in
       let class_addr = Memory.add_link_name_object mem t.id (Class {
         name = t.id;
+        constructors = constructors;
         methods = Hashtbl.create 10;
         attributes = Hashtbl.create 10;
       }) in
@@ -381,6 +389,12 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       modifiers = a.amodifiers;
     }
 
+  (** Create a new constructor *)
+  and declare_constructor mem (m : AST.astconst) : Memory.memory_address =
+      Memory.add_object mem (Method{
+        body = m.cbody;
+        arguments = m.cargstype;
+      })
   (** Create a new method for the class located at `class_addr` *)
   and declare_method mem natives (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
     let cl = get_class_from_address mem class_addr in

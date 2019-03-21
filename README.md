@@ -192,8 +192,8 @@ To launch a specific unit test, the `main-class` argument can be used:
   * [x] bool
   * [ ] float
   * [ ] Double
-  * [ ] Char
-  * [ ] String
+  * [x] Char
+  * [x] String
 * [x] Simple arithmetic operations
 * [x] Simple logic operations
 * [ ] Postfix operations
@@ -201,10 +201,10 @@ To launch a specific unit test, the `main-class` argument can be used:
 * [x] Variable declaration
 * [x] Variable assignation (only `Assign`)
 * [x] null element
-* [ ] Arrays
-  * [ ] Creation
-  * [ ] Assignation
-  * [ ] Element access
+* [x] Arrays
+  * [x] Creation
+  * [x] Assignation
+  * [x] Element access
 * [ ] Casting
 * [ ] Exceptions
 * [ ] Object unboxing
@@ -217,7 +217,8 @@ To launch a specific unit test, the `main-class` argument can be used:
 * [x] Static Attribute declaration
 * [x] Static Attribute Access
 * [ ] Inheritance
-* [ ] Native Method declaration
+* [x] Native Method declaration
+* [x] Custom class constructor
 
 #### Control flow
 * [x] If, else if, else
