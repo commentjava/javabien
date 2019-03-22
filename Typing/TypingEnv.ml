@@ -221,10 +221,15 @@ let check_method_modifiers (modifiers: AST.modifier list) (amethod: AST.astmetho
   check_modifiers_combination AST.Native AST.Strictfp modifiers;
 
   let hasBody = (List.length amethod.mbody) > 0 in
-  if List.mem  AST.Abstract modifiers && hasBody then
+  let isAbstract = List.mem AST.Abstract modifiers in
+  let isNative = List.mem AST.Native modifiers in
+
+  if isAbstract && hasBody then
     raise(TypeExcept.CannotHaveMethodBody(AST.stringOf_modifier(AST.Abstract)));
-  if List.mem AST.Native modifiers && hasBody then
+  if isNative && hasBody then
     raise(TypeExcept.CannotHaveMethodBody(AST.stringOf_modifier(AST.Native)));
+  if not isAbstract && not isNative && not hasBody then
+    raise(TypeExcept.MissingMethodBody(amethod.mname));
 
   modifiers
 ;;

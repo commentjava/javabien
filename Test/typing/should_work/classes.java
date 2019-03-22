@@ -5,9 +5,11 @@ class B {
 	public int j;
 
 	public B() {
+		j = 1;
 	}
 
 	public B(int h) {
+		j = h;
 	}
 }
 

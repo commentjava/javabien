@@ -10,6 +10,7 @@ exception RepeatedModifier of string
 exception AbstractMethodInNormalClass of string
 exception IllegalModifiersCombination of string * string
 exception CannotHaveMethodBody of string
+exception MissingMethodBody of string
 
 
 (* TODO check that the above Exception correspond to java exceptions *)
