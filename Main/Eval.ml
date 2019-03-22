@@ -173,13 +173,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         )
         | _ -> raise (MemoryError "Invalid new on non-class object")
       end
-    | AST.NewArrayInitialized (t, expr) -> execute_expression mem expr
-    | ArrayInit (values) ->
-        let arr = Array.of_list (List.map (execute_expression mem) values) in
-        Memory.add_object mem (Array {
-          values = arr;
-        })
-    | NewArrayEmpty (t, sizes) ->
+    | AST.NewArrayEmpty (t, sizes) ->
       begin
         let empty_value = function
         | Type.Primitive(Int) -> Memory.add_object mem (Primitive(Int(0)))
@@ -197,6 +191,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         let sizes_addr = List.map (execute_expression mem) sizes in
         build_array sizes_addr
       end
+    | AST.NewArrayInitialized (t, expr) -> execute_expression mem expr
     | AST.Call (obj_name, method_name, args) ->
       begin
         let obj_addr = match obj_name with
@@ -255,7 +250,11 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         Memory.get_address_from_name mem n
         with Not_found -> print_memory mem; raise (MemoryError ("Name " ^ n ^ " not found in scope"))
       end
-    (* | AST.ArrayInit *)
+    | AST.ArrayInit (values) ->
+        let arr = Array.of_list (List.map (execute_expression mem) values) in
+        Memory.add_object mem (Array {
+          values = arr;
+        })
     | AST.Array (obj_name, attrs) ->
         let rec fetch_obj obj_addr = function
           | [] -> obj_addr;
@@ -359,21 +358,19 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
   and redirect_expression mem (e1 : AST.expression) (op : AST.assign_op) (e2_addr : Memory.memory_address) (return_old_val : bool) : Memory.memory_address =
     match e1.edesc with
     (* | New of string option * string list * expression list *)
-    (* | NewArray of Type.t * (expression option) list * expression option *)
+    (* | NewArrayEmpty of Type.t * expression list *)
+    (* | NewArrayInitialized of Type.t * expression *)
     (* | Call of expression option * string * expression list *)
-    (* | Attr of expression * string *)
     | AST.Attr (caller, attr_name) ->
       begin
         let cl_addr = execute_expression mem caller in
         let cl = Memory.get_object_from_address mem cl_addr in
         let attr_addr = get_attribute_value_address mem cl attr_name in
-        let res_addr =
-          match op with
-          | AST.Assign -> e2_addr
-          | _ -> raise(NotImplemented "Attr Redirect Expression not Implemented")
-          in
+        let attr_val = Memory.get_object_from_address mem attr_addr in
+        let e2_val = Memory.get_object_from_address mem e2_addr in
+        let res_addr = compute_assign_op mem attr_val attr_addr e2_val e2_addr op in
         set_attribute_value_address mem cl attr_name res_addr;
-        res_addr
+        if return_old_val then attr_addr else res_addr
       end
     (* | If of expression * expression * expression *)
     (* | Val of value *)
@@ -383,23 +380,6 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         let e1_val = Memory.get_object_from_address mem e1_addr in
         let e2_val = Memory.get_object_from_address mem e2_addr in
         let res_addr = compute_assign_op mem e1_val e1_addr e2_val e2_addr op in
-        (*
-          match op with
-          | AST.Assign -> e2_addr
-          (* | Ass_add -> TODO : make a function to apply an operator between two memory_address or two memory_unit and use it in execute_expression->AST.Op *)
-          (* | Ass_sub *)
-          (* | Ass_mul *)
-          (* | Ass_div *)
-          (* | Ass_mod *)
-          (* | Ass_shl *)
-          (* | Ass_shr *)
-          (* | Ass_shrr *)
-          (* | Ass_and *)
-          (* | Ass_xor *)
-          (* | Ass_or *)
-          | _ -> raise(NotImplemented "Named Redirect Expression not Implemented")
-        in
-        *)
         Memory.add_link_name_address mem n res_addr;
         if return_old_val then e1_addr else res_addr
       end
