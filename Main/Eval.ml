@@ -283,7 +283,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         let e2_addr = execute_expression mem e2 in
         let (e1_val, e2_val) = ((Memory.get_object_from_address mem e1_addr),
                                (Memory.get_object_from_address mem e2_addr)) in
-        match e1_val, e2_val, op with
+        (*match e1_val, e2_val, op with
         | Primitive(p1), Primitive(p2), AST.Op_cor -> cor_primitives mem (p1, p2)
         | Primitive(p1), Primitive(p2), AST.Op_cand -> cand_primitives mem (p1, p2)
         | Primitive(p1), Primitive(p2), AST.Op_or -> or_primitives mem (p1, p2)
@@ -309,7 +309,8 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         | Primitive(p1), Primitive(p2), AST.Op_sub -> sub_primitives mem (p1, p2)
         | Primitive(p1), Primitive(p2), AST.Op_mul -> mul_primitives mem (p1, p2)
         | Primitive(p1), Primitive(p2), AST.Op_div -> div_primitives mem (p1, p2)
-        | Primitive(p1), Primitive(p2), AST.Op_mod -> mod_primitives mem (p1, p2)
+        | Primitive(p1), Primitive(p2), AST.Op_mod -> mod_primitives mem (p1, p2)*)
+        compute_infix_op mem e1_val e1_addr e2_val e2_addr op
       end
     (* | AST.CondOp *)
     (* | AST.Cast *)
@@ -318,6 +319,63 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     (* | AST.InstanceOf *)
     (* | AST.VoidClass *)
     | _ -> raise(NotImplemented "Expression not Implemented")
+  (** Compute the result of a postfix operator on one value *)
+  and compute_postfix_op mem (val_1 : memory_unit) (addr_1 : Memory.memory_address) (op : AST.postfix_op) : Memory.memory_address =
+    match op with
+    | Incr -> compute_infix_op mem val_1 addr_1 (Primitive(Int(1))) 0 AST.Op_add
+    | Decr -> compute_infix_op mem val_1 addr_1 (Primitive(Int(1))) 0 AST.Op_sub
+  (** Compute the result of a prefix operator on one value *)
+  and compute_prefix_op mem (val_1 : memory_unit) (addr_1 : Memory.memory_address) (op : AST.prefix_op) : Memory.memory_address =
+    match op with
+    | Op_not -> compute_infix_op mem val_1 addr_1 (Primitive(Boolean(false))) 0 AST.Op_eq
+    | Op_neg -> compute_infix_op mem (Primitive(Int(0))) 0 val_1 addr_1 AST.Op_sub
+    | Op_incr -> compute_infix_op mem val_1 addr_1 (Primitive(Int(1))) 0 AST.Op_add
+    | Op_decr -> compute_infix_op mem val_1 addr_1 (Primitive(Int(1))) 0 AST.Op_sub
+    | Op_bnot -> compute_infix_op mem val_1 addr_1 (Primitive(Int(-1))) 0 AST.Op_xor
+  (** Compute the result of an assign operator on two values *)
+  and compute_assign_op mem (val_1 : memory_unit) (addr_1 : Memory.memory_address) (val_2 : memory_unit) (addr_2 : Memory.memory_address) (op : AST.assign_op) : Memory.memory_address =
+    match op with
+    | Assign -> addr_2
+    | Ass_add -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_add
+    | Ass_sub -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_sub
+    | Ass_mul -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_mul
+    | Ass_div -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_div
+    | Ass_mod -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_mod
+    | Ass_shl -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_shl
+    | Ass_shr -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_shr
+    | Ass_shrr -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_shrr
+    | Ass_and -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_and
+    | Ass_xor -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_xor
+    | Ass_or -> compute_infix_op mem val_1 addr_1 val_2 addr_2 AST.Op_or
+  (** Compute the result of an infix operator on two values *)
+  and compute_infix_op mem (val_1 : memory_unit) (addr_1 : Memory.memory_address) (val_2 : memory_unit) (addr_2 : Memory.memory_address) (op : AST.infix_op) : Memory.memory_address =
+    match val_1, val_2, op with
+    | Primitive(p1), Primitive(p2), AST.Op_cor -> cor_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_cand -> cand_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_or -> or_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_and -> and_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_xor -> xor_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_eq -> eq_primitives mem (p1, p2)
+    | Object(_), Object(_), AST.Op_eq -> eq_obj mem (addr_1, addr_2)
+    | Null, Null, AST.Op_eq -> eq_obj mem (0, 0)
+    | Null, Object(_), AST.Op_eq -> eq_obj mem (0, addr_2)
+    | Object(_), Null, AST.Op_eq -> eq_obj mem (addr_1, 0)
+    | Primitive(p1), Primitive(p2), AST.Op_ne -> ne_primitives mem (p1, p2)
+    | Object(_), Object(_), AST.Op_ne -> ne_obj mem (addr_1, addr_2)
+    | Null, Null, AST.Op_ne -> ne_obj mem (0, 0)
+    | Null, Object(_), AST.Op_ne -> ne_obj mem (0, addr_2)
+    | Object(_), Null, AST.Op_ne -> ne_obj mem (addr_1, 0)
+    | Primitive(p1), Primitive(p2), AST.Op_gt -> gt_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_lt -> lt_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_ge -> ge_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_le -> le_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_shl -> shl_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_shr -> shr_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_add -> add_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_sub -> sub_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_mul -> mul_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_div -> div_primitives mem (p1, p2)
+    | Primitive(p1), Primitive(p2), AST.Op_mod -> mod_primitives mem (p1, p2)
   (** Redirect the result of the given expression to the given memory_address *)
   and redirect_expression mem (e1 : AST.expression) (op : AST.assign_op) (e2_addr : Memory.memory_address) : Memory.memory_address =
     match e1.edesc with
@@ -342,8 +400,11 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     (* | Val of value *)
     | AST.Name (n) ->
       begin
-        let e1_val = Memory.get_object_from_name mem n in
-        let res_addr =
+        let e1_addr = Memory.get_address_from_name mem n in
+        let e1_val = Memory.get_object_from_address mem e1_addr in
+        let e2_val = Memory.get_object_from_address mem e1_addr in
+        let res_addr = compute_assign_op mem e1_val e1_addr e2_val e2_addr op in
+        (*
           match op with
           | AST.Assign -> e2_addr
           (* | Ass_add -> TODO : make a function to apply an operator between two memory_address or two memory_unit and use it in execute_expression->AST.Op *)
@@ -359,6 +420,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
           (* | Ass_or *)
           | _ -> raise(NotImplemented "Named Redirect Expression not Implemented")
         in
+        *)
         Memory.add_link_name_address mem n res_addr;
         res_addr
       end

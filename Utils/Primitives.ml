@@ -39,7 +39,7 @@ let mul_primitives mem = function
 
 (** Operation to divide two Primitive types *)
 let div_primitives mem = function
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 * i2)));
+  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 / i2)));
   | _ -> raise (InvalidOp "Cannot mul those primitives");;
 
 (** Operation to mod two Primitive types *)
@@ -54,26 +54,23 @@ let eq_primitives mem = function
 
 let ne_primitives mem = function
   | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 != i2)));
+  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 != i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 let gt_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 > i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 > i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 let lt_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 < i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 < i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 let ge_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 >= i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 >= i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 let le_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 <= i2)));
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 <= i2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 let shl_primitives mem = function
