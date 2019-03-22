@@ -1,6 +1,28 @@
 
 //: 94
-// : 97
+//: 94
+//: 95
+//: 95
+//: 95
+//: 94
+
+//: false
+//: -94
+//: 95
+//: 94
+//: -2
+
+//: 94
+//: 97
+//: 94
+//: 282
+//: 94
+//: 1
+//: 8
+//: 1
+//: 2
+//: 92
+//: 95
 
 //: true
 //: false
@@ -25,42 +47,54 @@
 //: 1
 class Main{
   static void main(){
-    int i = 0;
+    int i = 94;
     boolean b = true;
     // Incr
-    //Debug.debug(i);
-    //Debug.debug(i++);
-    //Debug.debug(i);
+    Debug.debug(i);
+    Debug.debug(i++);
+    Debug.debug(i);
 
     // Decr
-    //Debug.debug(i);
-    //Debug.debug(i--);
-    //Debug.debug(i);
+    Debug.debug(i);
+    Debug.debug(i--);
+    Debug.debug(i);
     
     // Op_not
-    
+    Debug.debug(!b);
     // Op_neg
-    
+    Debug.debug(-i);
     // Op_incr
-    
+    Debug.debug(++i);
     // Op_decr
-    
-    // Op bnot
+    Debug.debug(--i);
+    // Op_bnot
+    Debug.debug(~1);
 
     // Assign
     Debug.debug(i = 94);
     // Ass_add
-    //Debug.debug(i += 3); A multiplication is performes instead of an addition
+    Debug.debug(i += 3);
     // Ass_sub
+    Debug.debug(i -= 3);
     // Ass_mul
+    Debug.debug(i *= 3);
     // Ass_div
+    Debug.debug(i /= 3);
     // Ass_mod
+    Debug.debug(i %= 3);
     // Ass_shl
+    Debug.debug(i <<= 3);
     // Ass_shr
+    Debug.debug(i >>= 3);
     // Ass_shrr
+    //Not implemented
     // Ass_and
+    i = 94;
+    Debug.debug(i &= 3);
     // Ass_xor
+    Debug.debug(i ^= 94);
     // Ass_or
+    Debug.debug(i |= 3);
     
     // Op_cor
     Debug.debug(true || false);
