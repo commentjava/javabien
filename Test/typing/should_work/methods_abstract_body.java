@@ -1,5 +1,5 @@
 package toto;
 
 abstract class A {
-    abstract int myMethod();
+    abstract void myMethod();
 }

@@ -250,6 +250,23 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   | AST.VoidClass -> Type.Void
 ;;
 
+let check_return (env: TypingEnv.tc_env) (expression: AST.expression option) =
+  (* At this point env.current_method cannot be None *)
+  match env.current_method with
+  | Some m -> (
+    match expression with
+    | Some e -> (
+      if m.return_type == Type.Void then
+        raise(TypeExcept.IncompatibleType("Unexpected return value"));
+      check_expression env e
+    )
+    | None -> (
+      if m.return_type <> Type.Void then
+        raise(TypeExcept.IncompatibleType("Missing return value"));
+      Type.Void
+    )
+  )
+;;
 (* statement *)
 let rec check_statement env (statement: AST.statement) =
   let check_statement_if env condition if_statement else_statement =
@@ -278,7 +295,7 @@ let rec check_statement env (statement: AST.statement) =
   | AST.While(c, s) -> raise(Failure "Statement while not implemented")
   | AST.For(a, e, e2, s) -> raise(Failure "Statement for not implemented")
   | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s
-  | AST.Return(e) -> raise(Failure "Statement return not implemented")
+  | AST.Return(e) -> check_return env e; env
   | AST.Throw(e) -> raise(Failure "Statement throw not implemented")
   | AST.Try(s, a, s2) -> raise(Failure "Statement try not implemented")
   | AST.Expr(e) -> check_expression env e; env
@@ -288,43 +305,59 @@ and check_statement_list env (statements: AST.statement list) =
     | h::t -> check_statement_list (check_statement env h) t
 ;;
 
-(* astmethod *)
-let check_astmethod (env: TypingEnv.tc_env) (astmethod: AST.astmethod) =
+(* javamethod *)
+let check_javamethod (env: TypingEnv.tc_env) (javamethod: TypingEnv.javamethod) =
   (* Check other fields than mdbody *)
-  let env = { env with exec_env = (TypingEnv.exec_add_arguments env.exec_env astmethod.margstype) } in
-  check_statement_list env astmethod.mbody;
+  let env = { env with
+    exec_env = (TypingEnv.exec_add_arguments env.exec_env (Env.key_value_pairs javamethod.args.args_types)) ;
+    current_method = Some javamethod
+  } in
+  let rec check_return_statements statements return_count =
+    match statements with
+    | [] -> if javamethod.return_type <> Type.Void && return_count = 0 then
+      raise(TypeExcept.MissingReturnStatement);
+    | h::t -> (
+      match h with
+      | AST.Return(e) -> check_return_statements t (return_count+1)
+      | _ -> check_return_statements t return_count
+    )
+  in
+  check_return_statements javamethod.body 0;
+  check_statement_list env javamethod.body;
   ()
 ;;
 
-(* astclass *)
-let check_astclass env (astclass: AST.astclass) =
+(* javaclass *)
+let check_javaclass (env: TypingEnv.tc_env) (cname: string) (c: TypingEnv.javaclass) =
   (* Check other fields than cmethods *)
-  List.iter (check_astmethod env) astclass.cmethods
+  let env = { env with current_class = cname} in
+  List.iter (check_javamethod env) (Env.values c.methods)
 ;;
 
-(* type_info *)
+(* (* type_info *)
 let check_type_info env (type_info: AST.type_info) =
   match type_info with
-  | Class(c) -> check_astclass env c
+  | Class(c) -> check_javaclass env c
   | Inter -> raise(Failure "Interface not implemented")
-;;
+;; *)
 
-(* asttype *)
+
+(* (* asttype *)
 let check_asttype (env: TypingEnv.tc_env) (asttype: AST.asttype) =
   (* Check other fields than info *)
   let env = { env with current_class = asttype.id} in
   check_type_info env asttype.info
-;;
+;; *)
 
 (* t *)
-let check_t env (ast: AST.t) =
+let check_t (env: TypingEnv.tc_env) =
   (* Check other fields than type_list *)
-  let rec check_type_list tlist =
-    match tlist with
+  let rec check_class_list clist =
+    match clist with
     | [] -> ()
-    | h::t -> check_asttype env h; check_type_list t
+    | (cname,c)::t -> check_javaclass env cname c; check_class_list t
   in
-  check_type_list ast.type_list
+  check_class_list (Env.key_value_pairs env.classes_env)
   (* The line bellow should be equivalent to what's above, but it doesn't compile, why? *)
   (* List.iter (check_asttype env) ast.type_list; *)
 ;;
@@ -334,7 +367,7 @@ let rec typing (ast: AST.t) doPrintTypeEnv =
     let env = TypingEnv.create_env ast in
     if doPrintTypeEnv then TypingEnv.print_classes_env env.classes_env;
     print_newline ();
-    check_t env ast;
+    check_t env;
     print_string "\nType checking \x1b[0;32mok\x1b[0m\n";
     ast (* For now don't change the ast, in the future it might be changed to include to be a typed ast *)
   )

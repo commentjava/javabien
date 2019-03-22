@@ -7,13 +7,16 @@ class A {
 
 	public int method1() {
 		j2 = 3;
+		return j;
 	}
 
 	public int method1(int b) {
 		j = b;
+		return j;
 	}
 
 	public int method1(float b) {
 		j1 = b;
+		return j;
 	}
 }

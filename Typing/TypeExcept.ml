@@ -11,6 +11,8 @@ exception AbstractMethodInNormalClass of string
 exception IllegalModifiersCombination of string * string
 exception CannotHaveMethodBody of string
 exception MissingMethodBody of string
+exception IncompatibleType of string
+exception MissingReturnStatement
 
 
 (* TODO check that the above Exception correspond to java exceptions *)

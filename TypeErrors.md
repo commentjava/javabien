@@ -110,8 +110,8 @@ Compile-time Errors to implement:
 | 8.4.6 | if `B` is a class or interface, and `A` is a superclass or superinterface of `B`, and a method declaration `n` in `B` overrides or hides a method declaration `m` in `A`, `n` has a `throws` clause that mentions any checked exception types, `m` has a `throws` clause and for some checked exception type listed in the throws clause of `n` , that same exception class or one of its supertypes is not in the erasure of the `throws` clause of `m` | -- | -- |
 | 8.4.7 | a method declaration is either `abstract` or `native` and has a block for its body | yes | yes |
 | 8.4.7 | a method declaration is neither `abstract` nor `native` and has a semicolon for its body | yes | yes |
-| 8.4.7 | a `void` method contains a `return` statement that has an *Expression* | yes | -- |
-| 8.4.7 | if a method has a return type, the body of the method does not contain `return` statements or some `return` statements do not have an *Expression* | yes | -- |
+| 8.4.7 | a `void` method contains a `return` statement that has an *Expression* | yes | yes |
+| 8.4.7 | if a method has a return type, the body of the method does not contain `return` statements or some `return` statements do not have an *Expression* | yes | yes |
 | 8.4.8.1 | an instance method overrides a `static` method | -- | -- |
 | 8.4.8.2 | a `static` method hides an instance method | -- | -- |
 | 8.4.8.3 | if a method declaration `d1` with return type `R1` overrides or hides the declaration of another method `d2` with return type `R2` and `d1` is not return-type substitutable for `d2` | -- | -- |

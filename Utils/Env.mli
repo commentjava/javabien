@@ -20,5 +20,8 @@ val iter : ('a * 'b -> unit) -> ('a,'b) t -> unit
 (* returns values *)
 val values :  ('a,'b) t -> 'b list
 
+(* returns key-value pairs *)
+val key_value_pairs : ('a,'b) t -> ('a * 'b) list
+
 (* A function to print a hash table *)
 val print : string -> ('a -> unit) -> ('b -> string -> unit) -> ('a, 'b) t -> string -> unit

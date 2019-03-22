@@ -14,6 +14,7 @@ type javamethod = {
   return_type: Type.t;
   args: javamethodarguments;
   modifiers : AST.modifier list;
+  body: AST.statement list;
   loc : Location.t;
 }
 
@@ -38,6 +39,7 @@ type tc_env = {
   classes_env: classes_env;
   exec_env: exec_env;
   current_class: string;
+  current_method: javamethod option
 }
 
 (*******  Env Printing  ********)
@@ -149,6 +151,7 @@ let print_exec_env (e_env: exec_env) =
 let print_tc_env (env: tc_env) =
   print_string ("Current class: " ^ env.current_class ^ "\n");
   print_classes_env env.classes_env;
+  print_newline();
   print_exec_env env.exec_env
 ;;
 
@@ -253,6 +256,7 @@ let env_astmethod (env: (string, javamethod) Env.t) (amethod: AST.astmethod) (is
   Env.define env amethod.mname {
     return_type = amethod.mreturntype;
     args = args_env;
+    body = amethod.mbody;
     modifiers;
     loc = amethod.mloc
   }
@@ -384,10 +388,10 @@ let class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
 
 (*******  Exec Env  ********)
 
-let rec exec_add_arguments (exec_env: exec_env) (arguments: AST.argument list) =
+let rec exec_add_arguments (exec_env: exec_env) (arguments: (string * Type.t) list) =
   match arguments with
   | [] -> exec_env
-  | h::t -> exec_add_arguments (Env.define exec_env h.pident h.ptype) t (* TODO check if pident is already in the env *)
+  | (name, atype)::t -> exec_add_arguments (Env.define exec_env name atype) t (* TODO check if pident is already in the env *)
 ;;
 
 let add_variable (env: tc_env) (varname: string) (vartype: Type.t) =
@@ -415,6 +419,7 @@ let create_env (ast: AST.t) =
   {
     classes_env = classes_env;
     exec_env = Env.initial();
-    current_class = ""
+    current_class = "";
+    current_method = None
   }
 ;;

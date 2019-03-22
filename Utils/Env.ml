@@ -15,6 +15,8 @@ let iter f = Hashtbl.iter (fun s i -> f (s,i))
 
 let values env = Hashtbl.fold (fun k v acc -> v :: acc) env []
 
+let key_value_pairs env = Hashtbl.fold (fun k v acc -> (k, v) :: acc) env []
+
 let whitespace = "   " ;;
 let branche = "│  " ;;
 let colorRed = "\x1b[0;31m" ;;
