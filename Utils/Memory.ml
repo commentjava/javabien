@@ -64,12 +64,20 @@ end = struct
           print_stack s.parent) in
     print_stack (Some !m);
     Printf.printf "=== Memory Structure ===\n";
-    Hashtbl.iter
-      (fun x y ->
-        Printf.printf "%i -> " x;
-        f y
-      )
-      !m.data;
+    let rec print_data (i : int) =
+      if i < 0 then
+        ()
+      else
+        match Hashtbl.find_opt (!m.data) i with
+        | None -> print_data (i - 1)
+        | Some(obj) ->
+          begin
+            Printf.printf "%i -> " i;
+            f obj;
+            print_data (i - 1)
+          end
+    in
+    print_data (!(!m.next_id).v);
     Printf.printf "\n\n"
 
   (***** Memory getter ************************************)
@@ -312,6 +320,11 @@ let print_memory_unit u =
         Printf.printf "\t[a] %s -> %i\n" x y.v;
       )
       c.attributes;
+    List.iter
+      (fun addr ->
+        Printf.printf "\t[c] -> %i\n" addr
+      )
+      c.constructors;
     Hashtbl.iter
       (fun x y ->
         Printf.printf "\t[m] %s -> %i\n" x y;
