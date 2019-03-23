@@ -201,13 +201,13 @@ end = struct
   (***** Memory tools *************************************)
   let apply_garbage_collector (mem : 'a memory ref) (keep : memory_address list) (f : 'a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) : unit =
     let checker = Hashtbl.create 10 in
+    (* add all address to the checker *)
     Hashtbl.iter
       (fun mem_a obj ->
-        match List.find_opt (fun x -> x == mem_a) keep with
-        | None -> Hashtbl.add checker mem_a true
-        | _ -> ()
+        Hashtbl.add checker mem_a true
       )
       !mem.data;
+    (* remove all address linked to the memory from the checker *)
     let rec check_stack = function
       | None -> ()
       | Some(s) -> (
@@ -224,6 +224,14 @@ end = struct
         check_stack s.parent;
         ) in
     check_stack (Some !mem);
+    (* remove all address linked to the 'keep' list from the checker *)
+    List.iter
+      (fun addr ->
+        f mem (get_object_from_address mem addr) checker;
+        Hashtbl.remove checker addr
+      )
+      keep;
+    (* remove all the objects, whose address is still in the checker, from the memory *)
     Hashtbl.iter
       (fun addr b ->
         Hashtbl.remove !mem.data addr
@@ -354,17 +362,41 @@ let print_memory mem : unit =
 let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.memory_address, bool) Hashtbl.t) : unit =
   match mem_u with
   | Class c->
-    Hashtbl.iter
-      (fun n addr ->
-        remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
-        Hashtbl.remove checker addr
-      )
-      c.methods
+    begin
+      Hashtbl.iter
+        (fun n addr ->
+          remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
+          Hashtbl.remove checker addr
+        )
+        c.methods;
+      List.iter
+        (fun addr ->
+          remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
+          Hashtbl.remove checker addr
+        )
+        c.constructors;
+      Hashtbl.iter
+        (fun n attr ->
+          let addr = attr.v in
+          remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
+          Hashtbl.remove checker addr
+        )
+        c.attributes
+    end
   | Method m -> ()
   | NativeMethod m -> ()
   | Object o ->
-    remove_addr_from_checker mem (Memory.get_object_from_address mem o.t) checker;
-    Hashtbl.remove checker o.t
+    begin
+      remove_addr_from_checker mem (Memory.get_object_from_address mem o.t) checker;
+      Hashtbl.remove checker o.t;
+      Hashtbl.iter
+        (fun n attr ->
+          let addr = attr.v in
+          remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
+          Hashtbl.remove checker addr
+        )
+        o.attributes
+    end
   | Null -> ()
   | Primitive p -> ()
 ;;

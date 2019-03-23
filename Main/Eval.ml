@@ -478,6 +478,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     (* fun (prog : AST.t) -> (AST.print_AST prog) *)
     )
   additional_asts;
+  apply_garbage_collector mem [];
 
   (* Populate program memory *)
   List.iter (declare_type mem natives) p.type_list;
