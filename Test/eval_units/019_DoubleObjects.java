@@ -25,6 +25,36 @@
 //: false
 //: true
 
+//: true
+//: false
+//: false
+
+//: false
+//: true
+//: true
+//: false
+
+//: 35.29
+//: 15.07
+//: 9.29
+//: 5.78
+
+//: 0
+//: 1
+//: -1
+//: 0
+//: 1
+//: -1
+//: 1
+//: 0
+//: -1
+
+//: 1
+//: -1
+//: 1
+//: -1
+//: 0
+
 class Main{
   static void main(){
     Debug.dumpMemory();
@@ -59,6 +89,40 @@ class Main{
     Debug.debug(b <= c);
 
     double n = Double.NaN;
+    boolean bn = Double.isNaN(n);
+    Debug.debug(Double.isNaN(n));
+    Debug.debug(Double.isNaN(c));
+    Debug.debug(Double.isNaN(d));
+
+    double df = Double.NEGATIVE_INFINITY;
+    Debug.debug(Double.isInfinite(c));
+    Debug.debug(Double.isFinite(d));
+    Debug.debug(Double.isInfinite(df));
+    Debug.debug(Double.isFinite(df));
+
+    Double copyd = Double.valueOf(35.29);
+    Debug.debug(copyd.floatValue());
+    Debug.debug(Double.sum(5.78, 9.29));
+    Debug.debug(Double.max(5.78, 9.29));
+    Debug.debug(Double.min(5.78, 9.29));
+
+    Debug.debug(Double.compare(Double.NaN, Double.NaN));
+    Debug.debug(Double.compare(Double.NaN, Double.POSITIVE_INFINITY));
+    Debug.debug(Double.compare(5.87, Double.NaN));
+    Debug.debug(Double.compare(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY));
+    Debug.debug(Double.compare(Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY));
+    Debug.debug(Double.compare(5.87, Double.POSITIVE_INFINITY));
+    Debug.debug(Double.compare(5.87, Double.NEGATIVE_INFINITY));
+    Debug.debug(Double.compare(5.87, 5.87));
+    Debug.debug(Double.compare(5.87, 587));
+
+    Double no = new Double(n);
+    Double dfo = new Double(df);
+    Debug.debug(no.compareTo(dfo));
+    Debug.debug(copyd.compareTo(no));
+    Debug.debug(copyd.compareTo(dfo));
+    Debug.debug((new Double(5.87)).compareTo(copyd));
+    Debug.debug((new Double(35.29)).compareTo(copyd));
 
     Debug.dumpMemory();
   }
