@@ -267,6 +267,7 @@ and m_primitive =
   | Int of int
   | Boolean of bool
   | Char of char
+  | Float of float
 and memory_unit =
   | Class of m_class
   | Method of m_method
@@ -278,14 +279,15 @@ and memory_unit =
 
 let string_from_memory_unit (u : memory_unit) : string =
   match u with
-  | Class c -> "Class";
-  | Method m -> "Method";
-  | Object o -> "Object";  (* TODO: use to_string method *)
-  | Null -> "null";
-  | Array a -> "Array: " ^ String.concat " ; " (Array.to_list (Array.map string_of_int a.values));
-  | Primitive (Int i) -> string_of_int i;
-  | Primitive (Boolean b) -> string_of_bool b;
-  | Primitive (Char c) -> String.make 1 c;
+  | Class c -> "Class"
+  | Method m -> "Method"
+  | Object o -> "Object"  (* TODO: use to_string method *)
+  | Null -> "null"
+  | Array a -> "Array: " ^ String.concat " ; " (Array.to_list (Array.map string_of_int a.values))
+  | Primitive (Int i) -> string_of_int i
+  | Primitive (Boolean b) -> string_of_bool b
+  | Primitive (Char c) -> String.make 1 c
+  | Primitive (Float f) -> string_of_float f
 ;;
 
 let java_this : Memory.name = "this";;
@@ -332,6 +334,7 @@ let print_memory_unit u =
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
   | Primitive (Char c) -> Printf.printf "\t[CHAR] %c\n" c;
   | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
+  | Primitive (Float f) -> Printf.printf "\t[FLOAT] %f\n" f;
 ;;
 
 (* -> populate_mem

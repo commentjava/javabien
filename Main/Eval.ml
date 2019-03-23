@@ -224,6 +224,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         | AST.Boolean b -> Memory.add_object mem (Primitive(Boolean(b)))
         | AST.Char (Some c) -> Memory.add_object mem (Primitive(Char(c)))
         | AST.Char (None) -> Memory.add_object mem (Primitive(Char(' ')))
+        | AST.Float f -> Memory.add_object mem (Primitive(Float(float_of_string f)))
         | AST.String s ->
             let str_cl_addr = Memory.get_address_from_name mem "String" in
             let str_cl = get_class_from_address mem str_cl_addr in
