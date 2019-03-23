@@ -355,7 +355,7 @@ let print_memory_unit u =
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
   | Primitive (Char c) -> Printf.printf "\t[CHAR] %c\n" c;
   | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
-  | Primitive (Float f) -> Printf.printf "\t[FLOAT] %f\n" f;
+  | Primitive (Float f) -> Printf.printf "\t[FLOAT] %F\n" f;
 ;;
 
 (* -> populate_mem

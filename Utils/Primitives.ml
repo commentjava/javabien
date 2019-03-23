@@ -60,11 +60,11 @@ let mod_primitives mem = function
   | _ -> raise (InvalidOp "Cannot mod those primitives");;
 
 let eq_primitives mem = function
-  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 == i2)));
-  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 == i2)));
-  | Int(i1), Float(f2) -> Memory.add_object mem (Primitive(Boolean((float_of_int i1) == f2)))
-  | Float(f1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(f1 == (float_of_int i2))))
-  | Float(f1), Float(f2) -> Memory.add_object mem (Primitive(Boolean(f1 == f2)));
+  | Boolean(i1), Boolean(i2) -> Memory.add_object mem (Primitive(Boolean(i1 = i2)));
+  | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(i1 = i2)));
+  | Int(i1), Float(f2) -> Memory.add_object mem (Primitive(Boolean((float_of_int i1) = f2)))
+  | Float(f1), Int(i2) -> Memory.add_object mem (Primitive(Boolean(f1 = (float_of_int i2))))
+  | Float(f1), Float(f2) -> Memory.add_object mem (Primitive(Boolean(f1 = f2)));
   | _ -> raise (InvalidOp "Cannot bool those primitives");;
 
 let ne_primitives mem = function
