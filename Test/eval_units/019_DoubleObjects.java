@@ -27,7 +27,8 @@
 
 class Main{
   static void main(){
-    Double a = new Double();
+    Debug.dumpMemory();
+    Double a = new Double(2.61);
 
     Debug.debug(Double.MAX_EXPONENT);
     Debug.debug(Double.MIN_EXPONENT);
@@ -56,6 +57,8 @@ class Main{
     Debug.debug(b < c);
     Debug.debug(b >= c);
     Debug.debug(b <= c);
+
+    double n = Double.NaN;
 
     Debug.dumpMemory();
   }
