@@ -24,7 +24,7 @@ let _execute lexbuf verbose doPrintAST doPrintTypeEnv skip_type_checking skip_ev
       | false -> [] in
     if verbose then print_endline "successful parsing";
     if doPrintAST then AST.print_AST ast;
-    let ast = if skip_type_checking then ast else TypeChecker.typing ast doPrintTypeEnv in
+    let ast = if skip_type_checking then ast else TypeChecker.typing ast std_asts doPrintTypeEnv in
     if verbose then AST.print_program ast;
     if not skip_eval then execute_program ast std_asts entry_point args debug (* TODO: change that to typed_ast *)
   with
@@ -41,8 +41,8 @@ let execute lexbuf verbose doPrintAST skip_type_checking entry_point args load_s
   _execute lexbuf verbose doPrintAST false skip_type_checking false entry_point args debug load_std
 
 (* Execute only type-checking *)
-let execute_tc lexbuf =
-  _execute lexbuf false false true false true "" [] debug false
+let execute_tc lexbuf load_std =
+  _execute lexbuf false false true false true "" [] debug load_std
 
 let custom_exec lexbuf verbose doPrintAST skip_type_checking skip_eval entry_point args debug load_std =
   _execute lexbuf verbose doPrintAST false skip_type_checking skip_eval entry_point args debug load_std

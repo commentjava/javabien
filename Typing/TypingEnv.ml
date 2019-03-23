@@ -345,9 +345,14 @@ let rec env_asttype_list env asttype_list =
   | h::t -> env_asttype_list (env_asttype env h []) t
 ;;
 
-let create_classes_env (ast: AST.t) =
+let create_classes_env (ast: AST.t) (std_asts: AST.t list) =
+  let rec create_classes_env_list env (asts: AST.t list) =
+    match asts with
+    | [] -> env
+    | h::t -> create_classes_env_list (env_asttype_list env h.type_list) t
+  in
   let env = Env.initial() in
-  env_asttype_list env ast.type_list
+  create_classes_env_list env (ast::std_asts)
 ;;
 
 (* The following 3 functions: check_constructor_exist, function_return_type, and class_attr_type could be refactored *)
@@ -368,8 +373,25 @@ let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list)
   | _ -> raise(TypeExcept.WrongType "Only reference types have constructors")
 ;;
 
-let function_return_type (env: tc_env) (c_type: Type.t) (params: Type.t list) =
-  Type.Ref(Type.object_type) (* TODO raise an error if the function doesn't exist and return the actual return type *)
+let function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (params: Type.t list) =
+  match c_type with
+  | Ref(r) -> (
+    match r.tpath with
+    | [] -> (
+      try (
+        let class_ = Env.find env.classes_env r.tid in
+        try (
+          let method_ = Env.find class_.methods mname in
+          if method_.args.types <> params then
+            raise(TypeExcept.WrongMethodArguments(mname, params, method_.args.types));
+          method_.return_type
+        ) with Not_found -> raise(TypeExcept.CannotFindSymbol(mname))
+      ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
+    )
+    | h::t -> raise(Failure("nested references and nested classes not yet implemented")) (*TODO nested references and nested classes *)
+  )
+  | _ -> raise(TypeExcept.WrongType "Only reference types have methods")
+
 ;;
 
 let class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
@@ -408,14 +430,19 @@ let get_var_type (env: tc_env) (varname: string) =
   try
     Env.find env.exec_env varname
   with Not_found -> (
-    let current_javaclass = Env.find env.classes_env env.current_class in
-    let attr = Env.find current_javaclass.attributes varname in
-    attr.atype
+    try (
+      let current_javaclass = Env.find env.classes_env env.current_class in
+      try (
+        (* TODO: check for inner types *)
+        let attr = Env.find current_javaclass.attributes varname in
+        attr.atype
+      ) with Not_found -> raise(TypeExcept.CannotFindSymbol(varname))
+    ) with Not_found -> raise(TypeExcept.CannotFindSymbol(env.current_class))
   )
 ;;
 
-let create_env (ast: AST.t) =
-  let classes_env = create_classes_env ast in
+let create_env (ast: AST.t) (std_asts: AST.t list) =
+  let classes_env = create_classes_env ast std_asts in
   {
     classes_env = classes_env;
     exec_env = Env.initial();

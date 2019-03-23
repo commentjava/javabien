@@ -195,7 +195,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
       | Some(e) -> check_expression env e
       | None -> Type.Ref({tpath = [] ; tid = env.current_class})
     in
-    TypingEnv.function_return_type env e_type (List.map (check_expression env) el)
+    TypingEnv.function_return_type env e_type s (List.map (check_expression env) el)
   )
   | AST.Attr(e, str) -> TypingEnv.class_attr_type env (check_expression env e) str
   | AST.If(cond_e, if_e, else_e) -> check_expression_if env cond_e if_e else_e (* TODO How do we test that? *)
@@ -224,7 +224,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     )
     | _ -> raise(TypeExcept.WrongType "array required, but other type found")
   )
-  | AST.AssignExp(r_exp, o, l_exp) -> (
+  | AST.AssignExp(l_exp, o, r_exp) -> (
     let r_type = (check_expression env r_exp) in
     let l_type = (check_expression env l_exp) in
     match (r_type = l_type)  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
@@ -258,6 +258,7 @@ let check_return (env: TypingEnv.tc_env) (expression: AST.expression option) =
     | Some e -> (
       if m.return_type == Type.Void then
         raise(TypeExcept.IncompatibleType("Unexpected return value"));
+      (* TODO: check expression type and return type *)
       check_expression env e
     )
     | None -> (
@@ -362,9 +363,9 @@ let check_t (env: TypingEnv.tc_env) =
   (* List.iter (check_asttype env) ast.type_list; *)
 ;;
 
-let rec typing (ast: AST.t) doPrintTypeEnv =
+let rec typing (ast: AST.t) (std_asts: AST.t list) doPrintTypeEnv =
   try (
-    let env = TypingEnv.create_env ast in
+    let env = TypingEnv.create_env ast std_asts in
     if doPrintTypeEnv then TypingEnv.print_classes_env env.classes_env;
     print_newline ();
     check_t env;

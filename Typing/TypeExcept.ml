@@ -13,6 +13,8 @@ exception CannotHaveMethodBody of string
 exception MissingMethodBody of string
 exception IncompatibleType of string
 exception MissingReturnStatement
+exception WrongMethodArguments of string * Type.t list * Type.t list
+exception CannotFindSymbol of string
 
 
 (* TODO check that the above Exception correspond to java exceptions *)
