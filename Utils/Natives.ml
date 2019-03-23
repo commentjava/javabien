@@ -52,6 +52,39 @@ let init_natives debug =
     | _ -> Return (Memory.add_object mem (Primitive(Int(0))))
   in
 
+  let native_set_in0 (mem : 'a Memory.memory ref) : statement_return =
+    (Memory.get_object_from_name mem "this"); Void in
+  let native_set_out0 (mem : 'a Memory.memory ref) : statement_return =
+    debug (Memory.get_object_from_name mem "out"); Void in
+  let native_set_err0 (mem : 'a Memory.memory ref) : statement_return =
+    debug (Memory.get_object_from_name mem "err"); Void in
+
+  let native_read_bytes (mem : 'a Memory.memory ref) : statement_return =
+    debug (Memory.get_object_from_name mem "fd"); Void in
+
+  let native_write_bytes (mem : 'a Memory.memory ref) : statement_return =
+    let this = Memory.get_object_from_name mem "this" in
+    let java_fd_addr = get_attribute_value_address mem this "fd" in
+    let java_fd = match (Memory.get_object_from_address mem java_fd_addr) with Object o -> o in
+    let java_buffer = match (Memory.get_object_from_name mem "b") with Array a -> a.values in
+    let offest = match (Memory.get_object_from_name mem "off") with Primitive(Int(i)) -> i in
+    let len = match (Memory.get_object_from_name mem "len") with Primitive(Int(i)) -> i in
+    let fd_addr = Hashtbl.find java_fd.attributes "fd" in
+    let fd_ = match (Memory.get_object_from_address mem fd_addr.v) with Primitive(Int(i)) -> i in
+    let fd = match fd_ with
+    | 0 -> Unix.stdin
+    | 1 -> Unix.stdout
+    | 2 -> Unix.stderr in
+    let buff_ls = Array.to_list (Array.map (
+      fun x ->
+        match Memory.get_object_from_address mem x with Primitive(Char(c)) -> c
+    )
+    java_buffer) in
+    let buff_ls = List.map (String.make 1) buff_ls in
+    let buff = Bytes.of_string (String.concat "" buff_ls) in
+    Unix.write fd buff offest len;
+    Void in
+
   let natives = Hashtbl.create 10 in
   Hashtbl.add natives "Debug.dumpMemory" native_mem_dump;
   Hashtbl.add natives "Debug.debug" native_debug;
@@ -64,7 +97,10 @@ let init_natives debug =
   Hashtbl.add natives "Double._isNaN" native_double_isNaN;
   Hashtbl.add natives "Double._isInfinite" native_double_isInfinite;
   Hashtbl.add natives "Double._intValue" native_double_intValue;
-
-  natives
-;;
+  Hashtbl.add natives "System.setIn0" native_set_in0;
+  Hashtbl.add natives "System.setOut0" native_set_err0;
+  Hashtbl.add natives "System.setErr0" native_set_err0;
+  Hashtbl.add natives "FileInputStream.readBytes" native_read_bytes;
+  Hashtbl.add natives "FileOutputStream.writeBytes" native_write_bytes;
+    natives;;
 

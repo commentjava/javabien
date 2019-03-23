@@ -236,12 +236,17 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
               let rec exp i l =
                 if i < 0 then l else exp (i - 1) (str.[i] :: l) in
               exp (String.length str - 1) [] in
+            let s = Str.global_replace (Str.regexp "\\\\n") (String.make 1 '\n') s in
+            let str_c = String.length s in
+
             let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
             (explode s) in
+            let str_c_mem = Memory.add_object mem (Primitive(Int(str_c))) in
             let str_mem = Memory.add_object mem (Array {
               values = Array.of_list str_v;
             }) in
             set_attribute_value_address mem str_obj "value" str_mem;
+            set_attribute_value_address mem str_obj "count" str_c_mem;
             Memory.add_object mem str_obj
         | _ -> 0
       end

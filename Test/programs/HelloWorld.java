@@ -1,5 +1,6 @@
 class HelloWorld {
-        void main(String[] args) {
+        void main() {
+                System.initializeSystemClass();
                 System.out.println("Hello World!");
         }
 }
