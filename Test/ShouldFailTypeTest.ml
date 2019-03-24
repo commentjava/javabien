@@ -7,7 +7,7 @@ let execute filename =
   let lexbuf = Lexing.from_channel input_file in
   Location.init lexbuf filename;
   try
-    Compile.execute_tc lexbuf true;
+    Compile.execute_tc lexbuf false;
     assert false
   with error -> match error with
     | Assert_failure (s) -> (
