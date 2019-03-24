@@ -286,10 +286,22 @@ let env_astconstructor (env: (string, javaconst) Env.t) (const: AST.astconst) as
   }
 ;;
 
-let rec env_astconstructor_list (env: (string, javaconst) Env.t) (method_list: AST.astconst list) astclass_name =
+let rec env_astconstructor_list (env: (string, javaconst) Env.t) (method_list: AST.astconst list) (astclass_name: string) (astclass: AST.astclass) =
   match method_list with
-  | [] -> env
-  | h::t -> env_astconstructor_list (env_astconstructor env h astclass_name) t astclass_name
+  | [] -> (
+    (* Add default constructor *)
+    let args_env = ({
+      args_types = Env.initial();
+      types = []
+    }) in
+    Env.define env astclass_name {
+      args = args_env;
+      modifiers = [];
+      loc = astclass.cloc
+    }
+  )
+  | [const] -> env_astconstructor env const astclass_name
+  | h::t -> env_astconstructor_list (env_astconstructor env h astclass_name) t astclass_name astclass
 ;;
 
 let check_class_modifiers (class_modifiers: AST.modifier list) =
