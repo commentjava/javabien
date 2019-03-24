@@ -330,7 +330,7 @@ and env_astclass (env: classes_env) (astclass_name: string) (astclass: AST.astcl
 
   let attributes = env_astattribute_list (Env.initial()) astclass.cattributes in
   let methods = env_astmethod_list (Env.initial()) astclass.cmethods isAbstract in
-  let consts = env_astconstructor_list (Env.initial()) astclass.cconsts astclass_name in (* TODO default constructor MyClass() when no constructor is defined *)
+  let consts = env_astconstructor_list (Env.initial()) astclass.cconsts astclass_name astclass in (* TODO default constructor MyClass() when no constructor is defined *)
 
   (* For enclosed classes *)
   let types = env_enclosed_asttypes_list (Env.initial()) astclass.ctypes (enclosing_classes @ [astclass_name]) in
