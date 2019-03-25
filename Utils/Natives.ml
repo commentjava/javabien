@@ -21,6 +21,28 @@ let java_arr_to_ocaml_b mem java_array =
   let s = java_arr_to_ocaml_str mem java_array in
   Bytes.of_string s;;
 
+let create_java_string mem (str : string) : Memory.memory_address =
+  let str_cl_addr = Memory.get_address_from_name mem "String" in
+  let str_cl = get_class_from_address mem str_cl_addr in
+  let str_obj = (Object{
+    t = str_cl_addr;
+    attributes = copy_non_static_attrs mem str_cl;
+  }) in
+  let explode str =
+    let rec exp i l =
+      if i < 0 then l else exp (i - 1) (str.[i] :: l) in
+    exp (String.length str - 1) [] in
+  let s = Str.global_replace (Str.regexp "\\\\n") (String.make 1 '\n') str in
+  let str_c = String.length s in
+
+  let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
+  (explode s) in
+  let str_c_mem = Memory.add_object mem (Primitive(Int(str_c))) in
+  let str_mem = create_array mem str_v in
+  set_attribute_value_address mem str_obj "value" str_mem;
+  set_attribute_value_address mem str_obj "count" str_c_mem;
+  Memory.add_object mem str_obj
+
 let init_natives debug =
   let native_mem_dump (mem : 'a Memory.memory ref) : statement_return =
     print_memory mem; Void
@@ -101,8 +123,13 @@ let init_natives debug =
     let java_fn_str_addr = Hashtbl.find java_fn.attributes "value" in
     let java_fn_str = match Memory.get_object_from_address mem java_fn_str_addr.v with Array a -> a.values in
     let fn = java_arr_to_ocaml_str mem java_fn_str in
-    let fd = Unix.openfile fn [Unix.O_RDONLY] 640 in (* TODO: only read *)
-    let fd_id = new_file fd in
+
+    let fd_id = try
+      let fd = Unix.openfile fn [Unix.O_RDONLY] 640 in (* TODO: only read *)
+      new_file fd
+
+    with Unix.Unix_error (_, _, _) -> -1 in
+
     let fd_cl_addr = Memory.get_address_from_name mem "FileDescriptor" in
     let fd_cl = get_class_from_address mem fd_cl_addr in
     let fd_obj = (Object {
@@ -200,6 +227,9 @@ let init_natives debug =
     set_attribute_value_address mem socket_obj "fd" c_fd_obj_addr;
 
     Return (Memory.add_object mem socket_obj) in
+  let native_int_to_string (mem : 'a Memory.memory ref) : statement_return =
+    let n = match (Memory.get_object_from_name mem "n") with Primitive(Int(i)) -> i in
+    Return (create_java_string mem (string_of_int n)) in
 
   let natives = Hashtbl.create 10 in
   Hashtbl.add natives "Debug.dumpMemory" native_mem_dump;
@@ -226,6 +256,7 @@ let init_natives debug =
   Hashtbl.add natives "ServerSocket.accept" native_accept_socket;
   Hashtbl.add natives "Socket.close" native_close_file;
   Hashtbl.add natives "ServerSocket.close" native_close_file;
+  Hashtbl.add natives "String.fromInteger" native_int_to_string;
 
   (* According to unix spec 0, 1, 2 are always opened *)
   new_file Unix.stdin;

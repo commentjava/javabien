@@ -52,7 +52,7 @@ class FileOutputStream extends OutputStream
          * @param len the number of bytes that are written
          * @exception IOException If an I/O error has occurred.
          */
-        private native void writeBytes(byte b[], int off, int len) throws IOException;
+        private native void writeBytes(byte b[], int off, int len);
 
         /**
          * Writes <code>len</code> bytes from the specified byte array 
@@ -63,7 +63,7 @@ class FileOutputStream extends OutputStream
          * @param      len   the number of bytes to write.
          * @exception  IOException  if an I/O error occurs.
          */
-        public void write(byte b[], int off, int len) throws IOException {
+        public void write(byte b[], int off, int len) {
                 this.writeBytes(b, off, len);
         }
 
@@ -74,12 +74,10 @@ class FileOutputStream extends OutputStream
          *          the connection to the file in the file system being used 
          *          by this <code>FileOutputStream</code> object. 
          * 
-         * @exception  IOException  if an I/O error occurs.
          * @see        java.io.FileDescriptor
          */
-        public final FileDescriptor getFD()  throws IOException {
-                if (fd != null) return fd;
-                throw new IOException();
+        public final FileDescriptor getFD() {
+                return this.fd;
         }
 
         public void print(String str) {

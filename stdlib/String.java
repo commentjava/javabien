@@ -91,4 +91,20 @@ class String {
 	}
 	return -1;
     }
+
+    public static String concat(String s1, String s2)  {
+            int new_len = s1.count + s2.count;
+            char[] n = new char[new_len];
+            int i = 0;
+            for (i=0; i < s1.count; i++) {
+                    n[i] = s1.value[i];
+            }
+
+            for (i=0; i < s2.count; i++) {
+                    n[i+s1.count] = s2.value[i];
+            }
+            return new String(n);
+    }
+
+    public native static String fromInteger(int n);
 }

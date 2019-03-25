@@ -57,9 +57,8 @@ class FileInputStream extends InputStream
      * @exception  IOException  if an I/O error occurs.
      * @see        java.io.FileDescriptor
      */
-    public final FileDescriptor getFD() throws IOException {
-	if (fd != null) return fd;
-	throw new IOException();
+    public final FileDescriptor getFD() {
+            return this.fd;
     }
 
     public FileInputStream open(String filename) {
