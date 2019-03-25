@@ -138,6 +138,17 @@ let init_natives debug =
     Unix.write fd buff offest len;
     Void in
 
+  let native_int_pow (mem : 'a Memory.memory ref) : statement_return =
+    let rec pow a = function
+      | 0 -> 1
+      | 1 -> a
+      | n ->
+        let b = pow a (n / 2) in
+        b * b * (if n mod 2 = 0 then 1 else a) in
+    let a = match (Memory.get_object_from_name mem "a") with Primitive(Int(i)) -> i in
+    let b = match (Memory.get_object_from_name mem "b") with Primitive(Int(i)) -> i in
+    Return (Memory.add_object mem (Primitive(Int(pow a b)))) in
+
   let natives = Hashtbl.create 10 in
   Hashtbl.add natives "Debug.dumpMemory" native_mem_dump;
   Hashtbl.add natives "Debug.debug" native_debug;
@@ -158,6 +169,7 @@ let init_natives debug =
   Hashtbl.add natives "FileOutputStream.writeBytes" native_write_bytes;
   Hashtbl.add natives "FileOutputStream.close" native_close_file;
   Hashtbl.add natives "File.open" native_open_file;
+  Hashtbl.add natives "Math.pow" native_int_pow;
 
   (* According to unix spec 0, 1, 2 are always opened *)
   new_file Unix.stdin;

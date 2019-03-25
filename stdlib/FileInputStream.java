@@ -62,7 +62,7 @@ class FileInputStream extends InputStream
 	throw new IOException();
     }
 
-    public FileDescriptor open(String filename) {
+    public FileInputStream open(String filename) {
             int[] flags = {File.O_RDONLY};
             FileDescritor fd = File.open(filename, flags, 640);
             return new FileInputStream(fd);
