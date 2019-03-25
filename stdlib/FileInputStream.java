@@ -48,23 +48,6 @@ class FileInputStream extends InputStream
     }
 
     /**
-     * Reads up to <code>len</code> bytes of data from this input stream
-     * into an array of bytes. This method blocks until some input is
-     * available.
-     *
-     * @param      b     the buffer into which the data is read.
-     * @param      off   the start offset of the data.
-     * @param      len   the maximum number of bytes read.
-     * @return     the total number of bytes read into the buffer, or
-     *             <code>-1</code> if there is no more data because the end of
-     *             the file has been reached.
-     * @exception  IOException  if an I/O error occurs.
-     */
-    public int read(byte b[], int off, int len) throws IOException {
-	return readBytes(b, off, len);
-    }
-
-    /**
      * Returns the <code>FileDescriptor</code>
      * object  that represents the connection to
      * the actual file in the file system being
@@ -78,4 +61,12 @@ class FileInputStream extends InputStream
 	if (fd != null) return fd;
 	throw new IOException();
     }
+
+    public FileDescriptor open(String filename) {
+            int[] flags = {File.O_RDONLY};
+            FileDescritor fd = File.open(filename, flags, 640);
+            return new FileInputStream(fd);
+    }
+
+    public native void close();
 }

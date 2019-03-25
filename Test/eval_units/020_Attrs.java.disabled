@@ -1,0 +1,7 @@
+//: 0
+class Main {
+        int a = 0;
+        static void main(String[] args) {
+                Debug.debug(a);
+        }
+}

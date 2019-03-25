@@ -1,5 +1,26 @@
 open Memory
 
+let opened_files = Hashtbl.create 10;;
+let next_key = ref 0;;
+
+let new_file (fd : Unix.file_descr) : int =
+  Hashtbl.add opened_files !next_key fd;
+  next_key := !next_key + 1;
+  !next_key - 1;;
+
+
+let java_arr_to_ocaml_str mem java_array =
+    let buff_ls = Array.to_list (Array.map (
+      fun x ->
+        match Memory.get_object_from_address mem x with Primitive(Char(c)) -> c
+    )
+    java_array) in
+    String.concat "" (List.map (String.make 1) buff_ls);;
+
+let java_arr_to_ocaml_b mem java_array =
+  let s = java_arr_to_ocaml_str mem java_array in
+  Bytes.of_string s;;
+
 let init_natives debug =
   let native_mem_dump (mem : 'a Memory.memory ref) : statement_return =
     print_memory mem; Void
@@ -60,7 +81,48 @@ let init_natives debug =
     debug (Memory.get_object_from_name mem "err"); Void in
 
   let native_read_bytes (mem : 'a Memory.memory ref) : statement_return =
-    debug (Memory.get_object_from_name mem "fd"); Void in
+    let this = Memory.get_object_from_name mem "this" in
+    let java_fd_addr = get_attribute_value_address mem this "fd" in
+    let java_fd = match (Memory.get_object_from_address mem java_fd_addr) with Object o -> o in
+    let java_buffer = match (Memory.get_object_from_name mem "b") with Array a -> a.values in
+    let offset = match (Memory.get_object_from_name mem "off") with Primitive(Int(i)) -> i in
+    let len = match (Memory.get_object_from_name mem "len") with Primitive(Int(i)) -> i in
+    let fd_addr = Hashtbl.find java_fd.attributes "fd" in
+    let fd_ = match (Memory.get_object_from_address mem fd_addr.v) with Primitive(Int(i)) -> i in
+    let fd = Hashtbl.find opened_files fd_ in
+    let buff = java_arr_to_ocaml_b mem java_buffer in
+    let n_read = Unix.read fd buff offset len in
+
+    Bytes.iteri (fun i x -> java_buffer.(i) <- (Memory.add_object mem (Primitive(Char(x))))) buff;
+    Return (Memory.add_object mem (Primitive(Int(n_read)))) in
+
+  let native_open_file (mem : 'a Memory.memory ref) : statement_return =
+    let java_fn = match Memory.get_object_from_name mem "filename" with Object o -> o in
+    let java_fn_str_addr = Hashtbl.find java_fn.attributes "value" in
+    let java_fn_str = match Memory.get_object_from_address mem java_fn_str_addr.v with Array a -> a.values in
+    let fn = java_arr_to_ocaml_str mem java_fn_str in
+    let fd = Unix.openfile fn [Unix.O_RDONLY] 640 in (* TODO: only read *)
+    let fd_id = new_file fd in
+    let fd_cl_addr = Memory.get_address_from_name mem "FileDescriptor" in
+    let fd_cl = get_class_from_address mem fd_cl_addr in
+    let fd_obj = (Object {
+      t = fd_cl_addr;
+      attributes = copy_non_static_attrs mem fd_cl;
+    }) in
+    let fd_attr_addr = Memory.add_object mem (Primitive(Int(fd_id))) in
+    set_attribute_value_address mem fd_obj "fd" fd_attr_addr;
+    Return (Memory.add_object mem fd_obj) in
+
+  let native_close_file (mem : 'a Memory.memory ref) : statement_return =
+    let this = Memory.get_object_from_name mem "this" in
+    let java_fd_addr = get_attribute_value_address mem this "fd" in
+    let java_fd = match (Memory.get_object_from_address mem java_fd_addr) with Object o -> o in
+    let fd_addr = Hashtbl.find java_fd.attributes "fd" in
+    let fd_ = match (Memory.get_object_from_address mem fd_addr.v) with Primitive(Int(i)) -> i in
+    let fd = Hashtbl.find opened_files fd_ in
+    Unix.close fd;
+    Hashtbl.remove opened_files fd_;
+    Void in
 
   let native_write_bytes (mem : 'a Memory.memory ref) : statement_return =
     let this = Memory.get_object_from_name mem "this" in
@@ -71,17 +133,8 @@ let init_natives debug =
     let len = match (Memory.get_object_from_name mem "len") with Primitive(Int(i)) -> i in
     let fd_addr = Hashtbl.find java_fd.attributes "fd" in
     let fd_ = match (Memory.get_object_from_address mem fd_addr.v) with Primitive(Int(i)) -> i in
-    let fd = match fd_ with
-    | 0 -> Unix.stdin
-    | 1 -> Unix.stdout
-    | 2 -> Unix.stderr in
-    let buff_ls = Array.to_list (Array.map (
-      fun x ->
-        match Memory.get_object_from_address mem x with Primitive(Char(c)) -> c
-    )
-    java_buffer) in
-    let buff_ls = List.map (String.make 1) buff_ls in
-    let buff = Bytes.of_string (String.concat "" buff_ls) in
+    let fd = Hashtbl.find opened_files fd_ in
+    let buff = java_arr_to_ocaml_b mem java_buffer in
     Unix.write fd buff offest len;
     Void in
 
@@ -101,6 +154,15 @@ let init_natives debug =
   Hashtbl.add natives "System.setOut0" native_set_err0;
   Hashtbl.add natives "System.setErr0" native_set_err0;
   Hashtbl.add natives "FileInputStream.readBytes" native_read_bytes;
+  Hashtbl.add natives "FileInputStream.close" native_close_file;
   Hashtbl.add natives "FileOutputStream.writeBytes" native_write_bytes;
-    natives;;
+  Hashtbl.add natives "FileOutputStream.close" native_close_file;
+  Hashtbl.add natives "File.open" native_open_file;
+
+  (* According to unix spec 0, 1, 2 are always opened *)
+  new_file Unix.stdin;
+  new_file Unix.stdout;
+  new_file Unix.stderr;
+
+  natives;;
 

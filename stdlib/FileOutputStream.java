@@ -90,6 +90,6 @@ class FileOutputStream extends OutputStream
                 this.print("\n");
         }
 
-
+        public native void close();
 }
 
