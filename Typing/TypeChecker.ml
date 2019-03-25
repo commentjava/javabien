@@ -294,7 +294,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     let l_type = (check_expression env l_exp) in
     match (check_assignment_conversion r_type l_type)  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
     | true -> l_type
-    | false -> raise(TypeExcept.WrongType "Can't assign a different type") (* TODO Inheritance *)
+    | false -> raise(TypeExcept.WrongType ("Can't assign: " ^ (Type.stringOf l_type) ^ " != " ^ (Type.stringOf r_type))) (* TODO Inheritance *)
   )
   | AST.Post(e, o) -> Type.Primitive(ensure_numeric_type (unboxing_conversion (check_expression env e)))
   | AST.Pre(o, e) -> (

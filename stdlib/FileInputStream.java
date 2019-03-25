@@ -64,7 +64,7 @@ class FileInputStream extends InputStream
 
     public FileInputStream open(String filename) {
             int[] flags = {File.O_RDONLY};
-            FileDescritor fd = File.open(filename, flags, 640);
+            FileDescriptor fd = File.open(filename, flags, 640);
             return new FileInputStream(fd);
     }
 
