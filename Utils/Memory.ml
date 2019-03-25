@@ -6,17 +6,17 @@ module Memory : sig
 
   (***** Memory definition ******************************************)
   type 'a memory
-  val print_memory : 'a memory ref -> ('a -> unit) -> unit                      (* print_memory *)
+  val print_memory : 'a memory ref -> ('a -> unit) -> unit
   (***** Memory getter ************************************)
   val get_address_from_name : 'a memory ref -> name -> memory_address
   val get_object_from_address : 'a memory ref -> memory_address -> 'a
   val get_object_from_name : 'a memory ref -> name -> 'a
   (***** Memory setter ************************************)
-  val add_link_name_address : 'a memory ref -> name -> memory_address -> unit   (* new_mem_name *)
-  val add_object : 'a memory ref -> 'a -> memory_address                        (* new_mem_obj *)
+  val add_link_name_address : 'a memory ref -> name -> memory_address -> unit
+  val add_object : 'a memory ref -> 'a -> memory_address
   val add_link_name_object : 'a memory ref -> name -> 'a -> memory_address
   (***** Memory factory ***********************************)
-  val make_memory : unit -> 'a memory ref                                       (* new_memory *)
+  val make_memory : unit -> 'a memory ref
   val make_empiled_memory : 'a memory ref -> 'a memory ref
   val make_memory_stack : 'a memory ref -> 'a memory ref
   val save_temp_var : 'a memory ref -> memory_address -> unit
@@ -135,7 +135,7 @@ end = struct
     get_object_from_address mem (get_address_from_name mem n)
 
   (***** Memory setter ************************************)
-  (* -> new_mem_name
+  (*
   Link the given name with the given memory_address
   *)
   let add_link_name_address (mem : 'a memory ref) (n : name) (mem_a : memory_address) : unit =
@@ -156,7 +156,7 @@ end = struct
       | [] -> raise (MemoryError "Memory is missing")
       | hname::tnames -> Hashtbl.replace hname n mem_a
 
-  (* -> new_mem_obj
+  (*
   Insert the given memory_unit in the memory
   Give the memory_address assigned to this memory_unit
   *)
@@ -176,7 +176,7 @@ end = struct
     mem_a
 
   (***** Memory factory ***********************************)
-  (* -> new_memory
+  (*
   Give a reference to a new empty memory
   *)
   let make_memory () : 'a memory ref =
@@ -277,7 +277,6 @@ and m_attr = {
   modifiers : AST.modifier list;
 }
 and m_class = {
-  (* attributes : (name, memory_address) Hashtbl.t *)
   name : string;
   constructors : Memory.memory_address list;
   methods : (Memory.name, Memory.memory_address) Hashtbl.t;
@@ -351,8 +350,6 @@ let print_memory_unit u =
   | Method m ->
     Printf.printf "\t[Method]\n";
     List.iter (AST.print_statement "\t") m.body;
-  | NativeMethod m ->
-    Printf.printf "\t[Native Method]\n";
   | Object o ->
     Printf.printf "\t[Object]\n";
     Printf.printf "\tInstance of: %i\n" o.t;
@@ -361,24 +358,25 @@ let print_memory_unit u =
         Printf.printf "\t[a] %s -> %i\n" x y.v;
       )
       o.attributes;
-  | Null ->
-    Printf.printf "\t[null]\n";
-  | Array a ->
-      Printf.printf "\t[array]\n";
-      Array.iter
-      (fun x ->
-        Printf.printf "\t %i\n" x;
-      )
-      a.values;
   | Primitive (Int i) -> Printf.printf "\t[INT] %i\n" i;
   | Primitive (Char c) -> Printf.printf "\t[CHAR] %c\n" c;
   | Primitive (Boolean b) -> Printf.printf "\t[BOOL] %b\n" b;
   | Primitive (Float f) -> Printf.printf "\t[FLOAT] %F\n" f;
+  | Null ->
+    Printf.printf "\t[null]\n";
+  | Array a ->
+    Printf.printf "\t[array]\n";
+    Array.iter
+      (fun x ->
+        Printf.printf "\t %i\n" x;
+      )
+      a.values;
+  | NativeMethod m ->
+    Printf.printf "\t[Native Method]\n";
 ;;
 
-(* -> populate_mem
-Give a reference to a new memory populated with the following :
-  "null" -> 0 -> Null
+(*
+Give a reference to a new memory populated with some basic values
 *)
 let make_populated_memory () : 'a Memory.memory ref =
   let mem = Memory.make_memory () in

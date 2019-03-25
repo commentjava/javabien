@@ -51,7 +51,8 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     )
     | _ -> raise(MemoryError "Only methods are callable")
 
-  and exec_st_list mem = function
+  and exec_st_list mem (st_list : AST.statement list) : statement_return =
+    match st_list with
     | [] -> Void
     | hd::tl -> (
       match execute_statement mem hd with
@@ -61,8 +62,9 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     )
 
   (** Execute a statement in memory *)
-  and execute_statement (mem : 'a Memory.memory ref) = function
+  and execute_statement (mem : 'a Memory.memory ref) (st : AST.statement) : statement_return =
     (** TODO: Take into account the apparent type *)
+    match st with
     | AST.VarDecl dl ->
       begin
         List.iter
@@ -187,15 +189,16 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         let args_addr = List.map (fun e -> execute_expression_GC mem e) args in
         let class_addr = resolve_fqn mem fqn in
         match Memory.get_object_from_address mem class_addr with
-        | Class cl -> (
-          let obj_addr = Memory.add_object mem (Object {
-            t = class_addr;
-            attributes = copy_non_static_attrs mem cl
-          }) in
-          match cl.constructors with
-          | [] -> obj_addr;
-          | hd::tl -> execute_method mem obj_addr hd args_addr; obj_addr; (* TODO: This is  a hack because we do not handle method overloading *)
-        )
+        | Class cl ->
+          begin
+            let obj_addr = Memory.add_object mem (Object {
+              t = class_addr;
+              attributes = copy_non_static_attrs mem cl
+            }) in
+            match cl.constructors with
+            | [] -> obj_addr;
+            | hd::tl -> execute_method mem obj_addr hd args_addr; obj_addr; (* TODO: This is  a hack because we do not handle method overloading *)
+          end
         | _ -> raise (MemoryError "Invalid new on non-class object")
       end
     | AST.NewArrayEmpty (t, sizes) ->
