@@ -410,6 +410,12 @@ let check_method_args (params: Type.t list) (actual_args: Type.t list) (check_pa
       if check_parent then (
         (* TODO actual check for parents *)
         match t2 with
+        | Array(t, l) -> (
+          match t1 with
+          (* TODO other conversions 5.1.3 *)
+          | Array(t_, l_) -> if t = Type.Primitive(Byte) && t_ = Type.Primitive(Char) then true else false
+          | _ -> false
+        )
         | Ref(r) -> if r.tid = "Object" then true else false
         | _ -> false
       ) else false
@@ -505,6 +511,8 @@ let class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
       )
     ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
   )
+  | Array(t, l) -> if attr_name = "length" then Primitive(Type.Int)
+    else raise(Failure "only length attribute is implemented for arrays")
   | _ -> raise(TypeExcept.WrongType "Can't access an attribute if it's not a reference type")
 ;;
 
