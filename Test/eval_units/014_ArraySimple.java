@@ -10,7 +10,7 @@ class X {
         int x;
 }
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 int[] a = {1, 2, 3};
                 int b = a[0];
                 Debug.debug(b);

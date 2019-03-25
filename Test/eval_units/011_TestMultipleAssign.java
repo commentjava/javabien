@@ -3,7 +3,7 @@
 
 class Main {
 
-        void main () {
+        void main(String[] args) {
                 int a = 10;
                 int b = a;
                 b = a + 1;

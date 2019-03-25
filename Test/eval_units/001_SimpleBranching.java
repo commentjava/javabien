@@ -2,7 +2,7 @@
 //: 4
 
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 boolean a = true;
                 Debug.debug(a);
                 if (a) {

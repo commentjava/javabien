@@ -7,7 +7,7 @@ class Constructed {
         }
 }
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 Constructed c = new Constructed(10);
                 Debug.debug(c.a);
         }

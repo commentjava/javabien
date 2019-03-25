@@ -1,5 +1,5 @@
 class Fibonacci {
-        static void main() {
+        static void main(String[] args) {
                 int N = 22;
                 int a = 1;
                 int b = 1;

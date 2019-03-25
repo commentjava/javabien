@@ -133,7 +133,7 @@ class Container{
 }
 
 class Main{
-  static void main(){
+  static void main(String[] args) {
     // ### Values ###
     // Incr
     //Debug.debug(i++);

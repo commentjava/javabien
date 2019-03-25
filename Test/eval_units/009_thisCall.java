@@ -16,7 +16,7 @@ class TestClass {
 }
 
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 int a = 2;
                 TestClass t = new TestClass();
                 a = t.returns6();

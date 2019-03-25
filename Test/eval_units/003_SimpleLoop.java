@@ -9,7 +9,7 @@
 //: 9
 //: 10
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 int a = 0;
                 while (a < 10) {
                         a = a + 1;

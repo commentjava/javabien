@@ -11,7 +11,7 @@ class MyClass {
 
 class Main {
 
-        void main () {
+        void main(String[] args) {
                 MyClass a = new MyClass();
                 MyClass b = new MyClass();
                 a.ns = 7;

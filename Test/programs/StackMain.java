@@ -45,7 +45,7 @@ class Stack {
 }
 
 class StackMain {
-        static void main() {
+        static void main(String[] args) {
                 Stack s = new Stack();
                 int i = 0;
                 while (i < 20) {

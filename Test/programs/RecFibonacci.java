@@ -11,7 +11,7 @@ class Fib {
 }
 
 class RecFibonacci {
-        static void main() {
+        static void main(String[] args) {
                 int N = 22;;
                 Fib f = new Fib();
                 int res = f.fib(N); 

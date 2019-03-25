@@ -154,6 +154,30 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     | AST.Expr e -> execute_expression mem e; Void
     | _ -> raise(NotImplemented "Statement not Implemented")
 
+  and create_java_string mem (str : string) : Memory.memory_address =
+    let str_cl_addr = Memory.get_address_from_name mem "String" in
+    let str_cl = get_class_from_address mem str_cl_addr in
+    let str_obj = (Object{
+      t = str_cl_addr;
+      attributes = copy_non_static_attrs mem str_cl;
+    }) in
+    let explode str =
+      let rec exp i l =
+        if i < 0 then l else exp (i - 1) (str.[i] :: l) in
+      exp (String.length str - 1) [] in
+    let s = Str.global_replace (Str.regexp "\\\\n") (String.make 1 '\n') str in
+    let str_c = String.length s in
+
+    let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
+    (explode s) in
+    let str_c_mem = Memory.add_object mem (Primitive(Int(str_c))) in
+    let str_mem = Memory.add_object mem (Array {
+      values = Array.of_list str_v;
+    }) in
+    set_attribute_value_address mem str_obj "value" str_mem;
+    set_attribute_value_address mem str_obj "count" str_c_mem;
+    Memory.add_object mem str_obj
+
   (** Execute an expression in memory *)
   and execute_expression mem (expr : AST.expression) : Memory.memory_address =
     match expr.edesc with
@@ -245,29 +269,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         | AST.Char (Some c) -> Memory.add_object mem (Primitive(Char(c)))
         | AST.Char (None) -> Memory.add_object mem (Primitive(Char(' ')))
         | AST.Float f -> Memory.add_object mem (Primitive(Float(float_of_string f)))
-        | AST.String s ->
-            let str_cl_addr = Memory.get_address_from_name mem "String" in
-            let str_cl = get_class_from_address mem str_cl_addr in
-            let str_obj = (Object{
-              t = str_cl_addr;
-              attributes = copy_non_static_attrs mem str_cl;
-            }) in
-            let explode str =
-              let rec exp i l =
-                if i < 0 then l else exp (i - 1) (str.[i] :: l) in
-              exp (String.length str - 1) [] in
-            let s = Str.global_replace (Str.regexp "\\\\n") (String.make 1 '\n') s in
-            let str_c = String.length s in
-
-            let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
-            (explode s) in
-            let str_c_mem = Memory.add_object mem (Primitive(Int(str_c))) in
-            let str_mem = Memory.add_object mem (Array {
-              values = Array.of_list str_v;
-            }) in
-            set_attribute_value_address mem str_obj "value" str_mem;
-            set_attribute_value_address mem str_obj "count" str_c_mem;
-            Memory.add_object mem str_obj
+        | AST.String s -> create_java_string mem s
         | _ -> 0
       end
     | AST.Name n ->
@@ -492,7 +494,12 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         arguments = m.margstype;
       }) in
       Hashtbl.add cl.methods m.mname method_addr
-      ) in
+      )
+  and create_args mem args : Memory.memory_address list =
+    [Memory.add_object mem (Array {
+      values = Array.of_list (List.map (fun a -> create_java_string mem a) args)
+    })]
+    in
 
   let natives = Natives.init_natives debug in
   let mem = make_populated_memory () in
@@ -511,7 +518,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
   (* Entry point *)
   let main_addr = resolve_fqn mem [entry_point] in
   let main_method_addr = resolve_fqn mem [entry_point; "main"] in
-  let m_args = [] in (* TODO: use args passed, blocked by array def *)
+  let m_args = create_args mem args in
   execute_method mem main_addr main_method_addr m_args;
   apply_garbage_collector mem [];
 ;;

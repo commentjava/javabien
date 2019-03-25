@@ -12,7 +12,7 @@ class C {
 }
 
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 C c1 = new C();
                 c1.a = 0;
 

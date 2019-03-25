@@ -6,7 +6,7 @@
 //: y
 
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 String a = "azerty";
                 int i = 0;
                 while (i < 6) {

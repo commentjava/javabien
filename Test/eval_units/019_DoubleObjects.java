@@ -56,7 +56,7 @@
 //: 0
 
 class Main{
-  static void main(){
+  static void main(String[] args) {
     Double a = new Double(2.61);
 
     Debug.debug(Double.MAX_EXPONENT);

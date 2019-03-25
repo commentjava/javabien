@@ -1,5 +1,5 @@
 class LinearRegression{
-  static void main(){
+  static void main(String[] args){
     double a = 0, b = 0, coef = 0.1, coef_modif = 0.8;
     int dist = 4, nb_p = 10, nb_tot = dist * nb_p, nb_epoch = 100;
     double[] x = new double[dist * nb_p];

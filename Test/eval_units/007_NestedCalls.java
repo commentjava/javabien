@@ -4,7 +4,7 @@
 //: 7
 //: 9
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 int a = 2;
                 int i = 0;
                 int j;

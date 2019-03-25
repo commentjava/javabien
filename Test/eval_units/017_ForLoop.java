@@ -12,7 +12,7 @@
 //: 4
 
 class Main {
-  static void main(){
+  static void main(String[] args) {
     for(int i = 0 ; i < 3 ; i = i + 1){
       Debug.debug(i);
     }

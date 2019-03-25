@@ -7,7 +7,7 @@ class TestClass {
 }
 
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 int alpha = 2;
                 int beta = 3;
                 TestClass t = new TestClass();

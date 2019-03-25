@@ -1,7 +1,7 @@
 //: 2
 
 class Main {
-        static void main() {
+        static void main(String[] args) {
                 int a = 1;
                 if (true) {
                         a = 2;
