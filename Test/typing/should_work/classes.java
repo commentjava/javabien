@@ -15,7 +15,8 @@ class B {
 
 class A {
 	public void method1() {
-		B b = new B(1, 2);
+		B b = new B(1);
+		B b2 = new B();
 		int j = b.j;
 	}
 }

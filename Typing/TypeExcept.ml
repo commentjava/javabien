@@ -14,6 +14,7 @@ exception MissingMethodBody of string
 exception IncompatibleType of string
 exception MissingReturnStatement
 exception WrongMethodArguments of string * Type.t list * Type.t list
+exception WrongConstructorArguments of string * Type.t list
 exception CannotFindSymbol of string
 
 

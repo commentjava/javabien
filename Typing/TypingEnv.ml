@@ -42,6 +42,12 @@ type tc_env = {
   current_method: javamethod option
 }
 
+type enclosed_elt =
+  | ConstList of javaconst list
+  | MethodList of javamethod list
+  | Attr of javamattribute
+  | Type of javaclass
+
 (*******  Env Printing  ********)
 let colorWhite = "\x1b[1;37m" ;;
 let colorReset = "\x1b[0m" ;;
@@ -367,55 +373,108 @@ let create_classes_env (ast: AST.t) (std_asts: AST.t list) =
   create_classes_env_list env (ast::std_asts)
 ;;
 
+(*
+When looking for an element in a class:
+  * look in the class for attribute/method/type
+  * look in inherited class attribute/method/type
+  * look in same package for type
+  TODO: check accessibility
+*)
+let rec get_elt_of_enclosed_class enclosing_class (elt: string) (qualified_name: string list) =
+  match qualified_name with
+  | [n] -> (
+    try (
+      match elt with
+      | "const" -> ConstList(Env.find_all enclosing_class.constructors n)
+      | "method" -> MethodList(Env.find_all enclosing_class.methods n)
+      | "attr" -> Attr(Env.find enclosing_class.attributes n)
+      | "type" -> Type(Env.find enclosing_class.types n)
+    ) with Not_found -> (
+        (* attr can be either attribute or internal type *)
+        if elt = "attr" then
+          get_elt_of_enclosed_class enclosing_class "type" [n]
+        else raise(TypeExcept.CannotFindSymbol(n))
+      )
+    )
+  | h::t -> (
+    try (
+      let enclosed_class = Env.find enclosing_class.types h in
+      get_elt_of_enclosed_class enclosed_class elt t
+    ) with Not_found ->  print_string "3"; raise(TypeExcept.CannotFindSymbol(h))
+  )
+;;
+
 (* The following 3 functions: check_constructor_exist, function_return_type, and class_attr_type could be refactored *)
 let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list) =
-  let has_params (const: javaconst) = ()
-    (* TODO The hashmap make things more complicated than necessary, should we change args_type to be a list without params names or implement this function as is *)
-  in
   match c_type with
   | Ref(r) -> (
-    match r.tpath with
-    | [] -> (
-      let t_class = Env.find env.classes_env r.tid in
-      (* let const = Env.find has_params t_class.constructors in *)
-      c_type
-    )
-    | h::t -> c_type (*TODO nested references and nested classes *)
+    let rec check_constructors (clist: javaconst list) =
+      match clist with
+      | [] -> raise(TypeExcept.CannotFindSymbol(r.tid))
+      | [c] -> (
+        if c.args.types = params then c_type
+        else raise(TypeExcept.WrongConstructorArguments(r.tid, params))
+      )
+      | h::t -> if h.args.types = params then c_type else check_constructors t
+    in
+    try (
+      match r.tpath@[r.tid;r.tid] with
+      | h::t -> (
+        let class_ = match (Env.mem env.classes_env h) with
+          | true -> Env.find env.classes_env h
+          (* it is maybe enclosed *)
+          (* TODO inheritance *)
+          | false -> Env.find (Env.find env.classes_env env.current_class).types h
+        in
+        let elt = get_elt_of_enclosed_class class_ "const" t in
+        match elt with
+        | ConstList(c) -> check_constructors c
+      )
+    ) with Not_found -> print_string "1"; raise(TypeExcept.CannotFindSymbol(r.tid))
   )
   | _ -> raise(TypeExcept.WrongType "Only reference types have constructors")
 ;;
 
-let function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (params: Type.t list) =
+let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (params: Type.t list) =
+  let rec check_methods (mlist: javamethod list) =
+    match mlist with
+    | [] -> raise(TypeExcept.CannotFindSymbol(mname))
+    | [m] -> (
+      if m.args.types = params then m.return_type
+      else raise(TypeExcept.WrongMethodArguments(mname, params, m.args.types))
+    )
+    | h::t -> if h.args.types = params then h.return_type else check_methods t
+  in
   match c_type with
   | Ref(r) -> (
-    match r.tpath with
-    | [] -> (
-      try (
-        let class_ = Env.find env.classes_env r.tid in
-        try (
-          let method_ = Env.find class_.methods mname in
-          if method_.args.types <> params then
-            raise(TypeExcept.WrongMethodArguments(mname, params, method_.args.types));
-          method_.return_type
-        ) with Not_found -> raise(TypeExcept.CannotFindSymbol(mname))
-      ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
-    )
-    | h::t -> raise(Failure("nested references and nested classes not yet implemented")) (*TODO nested references and nested classes *)
+    try (
+      match r.tpath@[r.tid]@[mname] with
+      | h::t -> (
+        let class_ = Env.find env.classes_env h in
+        let elt = get_elt_of_enclosed_class class_ "method" t in
+        match elt with
+        | MethodList(m) -> check_methods m
+      )
+    ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
   )
   | _ -> raise(TypeExcept.WrongType "Only reference types have methods")
-
 ;;
 
 let class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
   match c_type with
   | Ref(r) -> (
-    match r.tpath with
-    | [] -> (
-      let t_class = Env.find env.classes_env r.tid in
-      let attr = Env.find t_class.attributes attr_name in
-      attr.atype
-    )
-    | h::t -> Type.Ref(Type.object_type) (*TODO nested references and nested classes *)
+    try (
+      match r.tpath@[r.tid]@[attr_name] with
+      | h::t -> (
+        let class_ = Env.find env.classes_env h in
+        let elt = get_elt_of_enclosed_class class_ "attr" t in
+        match elt with
+        | Attr(a) -> a.atype
+        (* Attr could be a enclosed type *)
+        | Type(c) -> Type.Ref({tpath = r.tpath@[r.tid] ; tid = attr_name})
+      )
+    ) with Not_found ->
+      raise(TypeExcept.CannotFindSymbol(r.tid))
   )
   | _ -> raise(TypeExcept.WrongType "Can't access an attribute if it's not a reference type")
 ;;
@@ -444,11 +503,23 @@ let get_var_type (env: tc_env) (varname: string) =
   with Not_found -> (
     try (
       let current_javaclass = Env.find env.classes_env env.current_class in
-      try (
-        (* TODO: check for inner types *)
+      (*
+        When looking for an variable in a class:
+          * look in the class for attribute/type
+          * TODO : look in inherited class for attribute/type
+          * look in same package for type (here classes_env)
+      *)
+      if Env.mem current_javaclass.attributes varname then (
         let attr = Env.find current_javaclass.attributes varname in
         attr.atype
-      ) with Not_found -> raise(TypeExcept.CannotFindSymbol(varname))
+      ) else if Env.mem current_javaclass.types varname then (
+        let type_ = Env.find current_javaclass.types varname in
+        Type.Ref({tpath = [env.current_class] ; tid = varname})
+      ) else if Env.mem env.classes_env varname then (
+        let type_ = Env.find env.classes_env varname in
+        (* TODO: check accessibility *)
+        Type.Ref({tpath = [] ; tid = varname})
+      ) else raise(TypeExcept.CannotFindSymbol(varname))
     ) with Not_found -> raise(TypeExcept.CannotFindSymbol(env.current_class))
   )
 ;;

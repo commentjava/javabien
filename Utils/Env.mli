@@ -8,6 +8,9 @@ val initial : unit -> ('a,'b) t
 (* get the value associated to a key *)
 val find : ('a,'b) t -> 'a -> 'b
 
+(* get the values associated to a key *)
+val find_all : ('a,'b) t -> 'a -> 'b list
+
 (* is the key associated to a value is the environment *)
 val mem : ('a,'b) t -> 'a -> bool
 

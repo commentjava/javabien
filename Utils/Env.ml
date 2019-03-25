@@ -4,6 +4,8 @@ let initial () = (Hashtbl.create 17 : ('a,'b) t)
 
 let find env = Hashtbl.find env
 
+let find_all env = Hashtbl.find_all env
+
 let mem env = Hashtbl.mem env
 
 let define env n t =
