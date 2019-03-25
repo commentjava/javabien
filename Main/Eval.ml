@@ -102,11 +102,14 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         let rec run_while cond body =
           let res_addr = execute_expression mem cond in
           match (Memory.get_object_from_address mem res_addr) with
-          | Primitive(Boolean(true)) -> (execute_statement mem body; run_while cond body;)
-          | Primitive(Boolean(false)) -> ();
+          | Primitive(Boolean(true)) -> (match execute_statement mem body with
+            | Void -> run_while cond body;
+            | Return e -> Return e;
+            | Raise -> raise (NotImplemented "raise Not implemented");
+          )
+          | Primitive(Boolean(false)) -> Void;
         in
         run_while cond body;
-        Void
       end
     | AST.For (init, cond, update_expr, body) ->
       begin
@@ -127,14 +130,14 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
           match res with
           | Primitive(Boolean(true)) ->
             begin
-              execute_statement mem body;
-              List.map (execute_expression mem) update_expr;
-              run_for ()
+              match execute_statement mem body with
+              | Void -> List.map (execute_expression mem) update_expr; run_for ()
+              | Return e -> Return e;
+              | Raise -> raise (NotImplemented "raise Not implemented");
             end
-          | Primitive(Boolean(false)) -> ()
+          | Primitive(Boolean(false)) -> Void
         in
         run_for ();
-        Void
       end
     | AST.If (cond, is_true, is_false) ->
       begin
