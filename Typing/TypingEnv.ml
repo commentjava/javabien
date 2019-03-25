@@ -404,18 +404,38 @@ let rec get_elt_of_enclosed_class enclosing_class (elt: string) (qualified_name:
   )
 ;;
 
+let check_method_args (params: Type.t list) (actual_args: Type.t list) (check_parent: bool) =
+  let check_arg (t1: Type.t) (t2: Type.t) =
+    if t1 = t2 then true else
+      if check_parent then (
+        (* TODO actual check for parents *)
+        match t2 with
+        | Ref(r) -> if r.tid = "Object" then true else false
+        | _ -> false
+      ) else false
+  in
+  try (
+    let matching_args = List.map2 check_arg params actual_args in
+    if (List.mem false matching_args) then false else true
+  ) with Invalid_argument(s) -> false
+;;
+
 (* The following 3 functions: check_constructor_exist, function_return_type, and class_attr_type could be refactored *)
 let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list) =
   match c_type with
   | Ref(r) -> (
-    let rec check_constructors (clist: javaconst list) =
+    let rec check_constructors (clist: javaconst list) (check_parent: bool) =
       match clist with
       | [] -> raise(TypeExcept.CannotFindSymbol(r.tid))
       | [c] -> (
-        if c.args.types = params then c_type
+        let matching_args = check_method_args params c.args.types check_parent in
+        if matching_args then c_type
         else raise(TypeExcept.WrongConstructorArguments(r.tid, params))
       )
-      | h::t -> if h.args.types = params then c_type else check_constructors t
+      | h::t -> (
+        let matching_args = check_method_args params h.args.types check_parent in
+        if matching_args then c_type else check_constructors t check_parent
+      )
     in
     try (
       match r.tpath@[r.tid;r.tid] with
@@ -428,7 +448,10 @@ let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list)
         in
         let elt = get_elt_of_enclosed_class class_ "const" t in
         match elt with
-        | ConstList(c) -> check_constructors c
+        | ConstList(c) -> try (
+          check_constructors c false
+          (* retry and look for constructors in parents *)
+        ) with TypeExcept.WrongConstructorArguments(_, _) -> check_constructors c true
       )
     ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
   )
@@ -436,14 +459,18 @@ let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list)
 ;;
 
 let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (params: Type.t list) =
-  let rec check_methods (mlist: javamethod list) =
+  let rec check_methods (mlist: javamethod list) (check_parent: bool) =
     match mlist with
     | [] -> raise(TypeExcept.CannotFindSymbol(mname))
     | [m] -> (
-      if m.args.types = params then m.return_type
+      let matching_args = check_method_args params m.args.types check_parent in
+      if matching_args then m.return_type
       else raise(TypeExcept.WrongMethodArguments(mname, params, m.args.types))
     )
-    | h::t -> if h.args.types = params then h.return_type else check_methods t
+    | h::t -> (
+      let matching_args = check_method_args params h.args.types check_parent in
+      if matching_args then h.return_type else check_methods t check_parent
+    )
   in
   match c_type with
   | Ref(r) -> (
@@ -453,7 +480,10 @@ let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (par
         let class_ = Env.find env.classes_env h in
         let elt = get_elt_of_enclosed_class class_ "method" t in
         match elt with
-        | MethodList(m) -> check_methods m
+        | MethodList(m) -> try (
+          check_methods m false
+          (* retry and look for methods in parents *)
+        ) with TypeExcept.WrongMethodArguments(_, _, _) -> check_methods m true
       )
     ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
   )
