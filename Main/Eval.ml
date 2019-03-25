@@ -77,7 +77,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
             let variable_addr =
               match init with
               | None -> Memory.add_object mem Null
-              | Some e -> execute_expression mem e
+              | Some e -> execute_expression_GC mem e
             in
             Memory.add_link_name_address mem name variable_addr;
           )
@@ -87,20 +87,14 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     | AST.Block b ->
       begin
         let mem = Memory.make_empiled_memory mem in
-        let res = exec_st_list mem b in
-        let gc_keep = match res with
-        | Void -> []
-        | Return e -> [e]
-        | Raise -> raise (NotImplemented "Exception not implemented") in
-        (* apply_garbage_collector mem gc_keep; *)
-        res
+        exec_st_list mem b
       end
     | AST.Nop -> Void
     | AST.While (cond, body) ->
       begin
         let mem = Memory.make_empiled_memory mem in
         let rec run_while cond body =
-          let res_addr = execute_expression mem cond in
+          let res_addr = execute_expression_GC mem cond in
           match (Memory.get_object_from_address mem res_addr) with
           | Primitive(Boolean(true)) -> (match execute_statement mem body with
             | Void -> run_while cond body;
@@ -118,20 +112,20 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
           ( fun (t, name, expr) ->
             match expr with
             | None -> (Memory.add_link_name_object mem name Null; ())
-            | Some(e) -> Memory.add_link_name_address mem name (execute_expression mem e)
+            | Some(e) -> Memory.add_link_name_address mem name (execute_expression_GC mem e)
           )
           init;
         let rec run_for (() : unit) =
           let res =
             match cond with
             | None -> Primitive(Boolean(true))
-            | Some(c) -> Memory.get_object_from_address mem (execute_expression mem c)
+            | Some(c) -> Memory.get_object_from_address mem (execute_expression_GC mem c)
           in
           match res with
           | Primitive(Boolean(true)) ->
             begin
               match execute_statement mem body with
-              | Void -> List.map (execute_expression mem) update_expr; run_for ()
+              | Void -> List.map (execute_expression_GC mem) update_expr; run_for ()
               | Return e -> Return e;
               | Raise -> raise (NotImplemented "raise Not implemented");
             end
@@ -142,7 +136,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     | AST.If (cond, is_true, is_false) ->
       begin
         let mem = Memory.make_empiled_memory mem in
-        let res_addr = execute_expression mem cond in
+        let res_addr = execute_expression_GC mem cond in
         begin
           match Memory.get_object_from_address mem res_addr, is_false with
           | Primitive(Boolean(true)), _ -> execute_statement mem is_true
@@ -151,10 +145,10 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         end
       end
     | AST.Return None -> Return java_void
-    | AST.Return Some(expr) -> Return (execute_expression mem expr)
+    | AST.Return Some(expr) -> Return (execute_expression_GC mem expr)
     (* | AST.Throw *)
     (* | AST.Try *)
-    | AST.Expr e -> execute_expression mem e; Void
+    | AST.Expr e -> execute_expression_GC mem e; Void
     | _ -> raise(NotImplemented "Statement not Implemented")
 
   and create_java_string mem (str : string) : Memory.memory_address =
@@ -178,13 +172,19 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     set_attribute_value_address mem str_obj "value" str_mem;
     set_attribute_value_address mem str_obj "count" str_c_mem;
     Memory.add_object mem str_obj
+  (** Execute an expression in memory and call the garbage collector *)
+  and execute_expression_GC mem (expr : AST.expression) : Memory.memory_address =
+    let addr = execute_expression mem expr in
+    Memory.save_temp_var mem addr;
+    apply_garbage_collector mem false;
+    addr
 
   (** Execute an expression in memory *)
   and execute_expression mem (expr : AST.expression) : Memory.memory_address =
     match expr.edesc with
     | AST.New (None, fqn, args) ->
       begin
-        let args_addr = List.map (fun e -> execute_expression mem e) args in
+        let args_addr = List.map (fun e -> execute_expression_GC mem e) args in
         let class_addr = resolve_fqn mem fqn in
         match Memory.get_object_from_address mem class_addr with
         | Class cl -> (
@@ -200,15 +200,13 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       end
     | AST.NewArrayEmpty (t, sizes) ->
       begin
-        let empty_value =
+        let empty_value_addr =
           match t with
-          | Type.Primitive(Boolean) -> Memory.add_object mem (Primitive(Boolean(false)))
-          | Type.Primitive(Char) -> Memory.add_object mem (Primitive(Char(' ')))
-          | Type.Primitive(Int) -> Memory.add_object mem (Primitive(Int(0)))
-          | Type.Primitive(Long) -> Memory.add_object mem (Primitive(Int(0)))
-          | Type.Primitive(Float) -> Memory.add_object mem (Primitive(Float(0.0)))
-          | Type.Primitive(Double) -> Memory.add_object mem (Primitive(Float(0.0)))
-          | Type.Ref(r) -> 0
+          | Type.Primitive(Boolean) -> java_false
+          | Type.Primitive(Char) -> java_empty_char
+          | Type.Primitive(Byte) | Type.Primitive(Short) | Type.Primitive(Int) | Type.Primitive(Long) -> java_0
+          | Type.Primitive(Float) | Type.Primitive(Double) -> java_0f
+          | Type.Ref(_) -> java_void
           | _ -> raise (NotImplemented "EmptyArray not implemented for this type")
         in
         let rec makeList elt n res =
@@ -224,20 +222,20 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
             | _ -> 0 (* TODO : raise an error *)
           in
           match List.tl sizes_addr with
-          | [] -> create_array mem (makeList empty_value first_size []) (*(repeat (empty_value t) hd);*)
+          | [] -> create_array mem (makeList empty_value_addr first_size [])
           | tl -> create_array mem (makeList (build_array tl) first_size [])
         in
-        let sizes_addr = List.map (execute_expression mem) sizes in
+        let sizes_addr = List.map (execute_expression_GC mem) sizes in
         build_array sizes_addr
       end
-    | AST.NewArrayInitialized (t, expr) -> execute_expression mem expr
+    | AST.NewArrayInitialized (t, expr) -> execute_expression_GC mem expr
     | AST.Call (obj_name, method_name, args) ->
       begin
         let obj_addr = match obj_name with
-        | Some(addr) -> execute_expression mem addr
+        | Some(addr) -> execute_expression_GC mem addr
         | None -> Memory.get_address_from_name mem java_this in
         let obj = Memory.get_object_from_address mem obj_addr in
-        let args_addr = List.map (fun e -> execute_expression mem e) args in
+        let args_addr = List.map (fun e -> execute_expression_GC mem e) args in
         let method_addr = get_method_address mem obj method_name in
         match execute_method mem obj_addr method_addr args_addr with
         | Void -> java_void
@@ -246,15 +244,15 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       end
     | AST.Attr (caller, aname) ->
       begin
-        let cl_addr = execute_expression mem caller in
+        let cl_addr = execute_expression_GC mem caller in
         let cl = Memory.get_object_from_address mem cl_addr in
         get_attribute_value_address mem cl aname
       end
     (* | AST.If (cond, is_true, is_false) -> (
-        let res_id = execute_expression mem cond in
+        let res_id = execute_expression_GC mem cond in
         match Hashtbl.find !mem.data res_id with
-        | Primitive(Boolean(true)) -> execute_expression mem is_true;
-        | Primitive(Boolean(false)) -> execute_expression mem is_false;
+        | Primitive(Boolean(true)) -> execute_expression_GC mem is_true;
+        | Primitive(Boolean(false)) -> execute_expression_GC mem is_false;
     ); *)
     | AST.Val v ->
       begin
@@ -274,12 +272,12 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         with Not_found -> print_memory mem; raise (MemoryError ("Name " ^ n ^ " not found in scope"))
       end
     | AST.ArrayInit (values) ->
-        create_array mem (List.map (execute_expression mem) values)
+        create_array mem (List.map (execute_expression_GC mem) values)
     | AST.Array (obj_name, attrs) ->
         let rec fetch_obj obj_addr = function
           | [] -> obj_addr;
           | hd::tl -> (
-            let hd_addr = execute_expression mem hd in
+            let hd_addr = execute_expression_GC mem hd in
             let hd_value = match Memory.get_object_from_address mem hd_addr with
             | Primitive (Int(p)) -> p;
             | _ -> raise (IndexError "Unkown index") in
@@ -287,27 +285,27 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
             | Array (a) -> fetch_obj a.values.(hd_value) tl;
             | _ -> raise (IndexError "Unkown index");
           ) in
-        let obj_addr = execute_expression mem obj_name in
+        let obj_addr = execute_expression_GC mem obj_name in
         fetch_obj obj_addr attrs
 
     | AST.AssignExp (e1, op, e2) ->
       begin
-        redirect_expression mem e1 op (execute_expression mem e2) false
+        redirect_expression mem e1 op (execute_expression_GC mem e2) false
       end
     | AST.Post (e, op) ->
       begin
         match op with
-        | AST.Incr -> redirect_expression mem e AST.Ass_add (Memory.add_object mem (Primitive(Int(1)))) true
-        | AST.Decr -> redirect_expression mem e AST.Ass_sub (Memory.add_object mem (Primitive(Int(1)))) true
+        | AST.Incr -> redirect_expression mem e AST.Ass_add java_1 true
+        | AST.Decr -> redirect_expression mem e AST.Ass_sub java_1 true
       end
     | AST.Pre (op, e) ->
       begin
         match op with
-        | AST.Op_incr -> redirect_expression mem e AST.Ass_add (Memory.add_object mem (Primitive(Int(1)))) false
-        | AST.Op_decr -> redirect_expression mem e AST.Ass_sub (Memory.add_object mem (Primitive(Int(1)))) false
+        | AST.Op_incr -> redirect_expression mem e AST.Ass_add java_1 false
+        | AST.Op_decr -> redirect_expression mem e AST.Ass_sub java_1 false
         | _ ->
           begin
-            let e_addr = execute_expression mem e in
+            let e_addr = execute_expression_GC mem e in
             let e_val = Memory.get_object_from_address mem e_addr in
             match op with
             | AST.Op_not -> compute_infix_op mem e_val e_addr (Primitive(Boolean(false))) 0 AST.Op_eq
@@ -317,8 +315,8 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       end
     | AST.Op (e1, op, e2) ->
       begin
-        let e1_addr = execute_expression mem e1 in
-        let e2_addr = execute_expression mem e2 in
+        let e1_addr = execute_expression_GC mem e1 in
+        let e2_addr = execute_expression_GC mem e2 in
         let (e1_val, e2_val) = ((Memory.get_object_from_address mem e1_addr),
                                (Memory.get_object_from_address mem e2_addr)) in
         compute_infix_op mem e1_val e1_addr e2_val e2_addr op
@@ -383,7 +381,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     (* | Call of expression option * string * expression list *)
     | AST.Attr (caller, attr_name) ->
       begin
-        let cl_addr = execute_expression mem caller in
+        let cl_addr = execute_expression_GC mem caller in
         let cl = Memory.get_object_from_address mem cl_addr in
         let attr_addr = get_attribute_value_address mem cl attr_name in
         let attr_val = Memory.get_object_from_address mem attr_addr in
@@ -412,14 +410,14 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       let rec fetch_prev_obj prev_obj_addr obj_addr index = function
         | [] -> (prev_obj_addr, index);
         | hd::tl -> (
-          let hd_addr = execute_expression mem hd in
+          let hd_addr = execute_expression_GC mem hd in
           let hd_value = match Memory.get_object_from_address mem hd_addr with
           | Primitive (Int(p)) -> p;
           | _ -> raise (IndexError "Unkown index") in
           let a = get_arr_or_raise obj_addr in
           fetch_prev_obj obj_addr a.(hd_value) hd_value tl;
         ) in
-      let obj_addr = execute_expression mem obj_name in
+      let obj_addr = execute_expression_GC mem obj_name in
       let arr_addr, index = fetch_prev_obj obj_addr obj_addr 0 attrs  in
       Array.set (get_arr_or_raise arr_addr) index e2_addr;
       e2_addr
@@ -454,7 +452,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
   and declare_attr mem (class_addr : Memory.memory_address) (a : AST.astattribute) : unit =
     let attr_addr = match a.adefault with
     | None -> java_void
-    | Some(expr) -> execute_expression mem expr in (* TODO execute now only for static, otherwise execute at object instantiation *)
+    | Some(expr) -> execute_expression_GC mem expr in (* TODO execute now only for static, otherwise execute at object instantiation *)
     let cl = get_class_from_address mem class_addr in
     Hashtbl.add cl.attributes a.aname {
       v = attr_addr;
@@ -500,7 +498,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     (* fun (prog : AST.t) -> (AST.print_AST prog) *)
     )
   additional_asts;
-  apply_garbage_collector mem [];
+  apply_garbage_collector mem true;
 
   (* Populate program memory *)
   List.iter (declare_type mem natives) p.type_list;
@@ -510,6 +508,6 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
   let main_method_addr = resolve_fqn mem [entry_point; "main"] in
   let m_args = create_args mem args in
   execute_method mem main_addr main_method_addr m_args;
-  apply_garbage_collector mem [];
+  apply_garbage_collector mem true;
 ;;
 

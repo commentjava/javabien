@@ -19,9 +19,9 @@ module Memory : sig
   val make_memory : unit -> 'a memory ref                                       (* new_memory *)
   val make_empiled_memory : 'a memory ref -> 'a memory ref
   val make_memory_stack : 'a memory ref -> 'a memory ref
-  val save_temp_var : 'a memory ref -> memory_address -> 'a memory ref
+  val save_temp_var : 'a memory ref -> memory_address -> unit
   (***** Memory tools *************************************)
-  val apply_garbage_collector : 'a memory ref -> memory_address list -> ('a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) -> unit
+  val apply_garbage_collector : 'a memory ref -> bool -> ('a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) -> unit
 
 end = struct
   type memory_address = int
@@ -30,14 +30,17 @@ end = struct
   (***** Memory definition ******************************************)
   type reference_store = (name, memory_address) Hashtbl.t
   type 'a data_store = (memory_address, 'a) Hashtbl.t
-  type address_counter = { mutable v : memory_address }
+  type address_counter = { mutable ac : memory_address }
+  type unnamed_reference_store = { mutable urs : memory_address list }
+  type gci = { mutable old_pop : int }
 
   type 'a memory = {
     names : reference_store list;
-    current_expr : memory_address list list;
+    current_expr : unnamed_reference_store list;
     data : 'a data_store;
     next_id : address_counter ref;
     parent : 'a memory option; (* link to the parent stack *)
+    gc_infos : gci; (* informations for the GC *)
   }
 
   (*
@@ -50,18 +53,24 @@ end = struct
     let rec print_stack = function
       | None -> Printf.printf "END OF STACKS\n\n"
       | Some(s) -> (
-        List.iter
-          (fun n ->
+        List.iter2
+          (fun n ce ->
             Printf.printf "  Stack :\n";
             Hashtbl.iter
               (fun x y ->
                 Printf.printf "    %s -> %i\n" x y
               )
-              n
+              n;
+            List.iter
+              (fun y ->
+                Printf.printf "    _ -> %i\n" y
+              )
+              ce.urs
           )
-          s.names;
-          Printf.printf "\nPARENT STACK:\n";
-          print_stack s.parent) in
+          s.names s.current_expr;
+        Printf.printf "\nPARENT STACK:\n";
+        print_stack s.parent)
+    in
     print_stack (Some !m);
     Printf.printf "=== Memory Structure ===\n";
     let rec print_data (i : int) =
@@ -77,7 +86,7 @@ end = struct
             print_data (i - 1)
           end
     in
-    print_data (!(!m.next_id).v);
+    print_data (!(!m.next_id).ac);
     Printf.printf "\n\n"
 
   (***** Memory getter ************************************)
@@ -85,8 +94,8 @@ end = struct
   Give the next free memory_address and increase the counter
   *)
   let get_next_address (addr_c : address_counter ref) : memory_address =
-    let mem_a = !addr_c.v in
-    !addr_c.v <- mem_a + 1;
+    let mem_a = !addr_c.ac in
+    !addr_c.ac <- mem_a + 1;
     mem_a
 
   (*
@@ -109,7 +118,14 @@ end = struct
   Raise Not_found if the memory_address is not linked
   *)
   let get_object_from_address (mem : 'a memory ref) (mem_a : memory_address) : 'a =
-    Hashtbl.find !mem.data mem_a
+    try
+      Hashtbl.find !mem.data mem_a
+    with
+      Not_found ->
+        begin
+          print_endline ("The address " ^ (string_of_int mem_a) ^ " does not exist.");
+          raise Not_found
+        end
 
   (*
   Give the memory_unit corresponding to the given name
@@ -166,10 +182,11 @@ end = struct
   let make_memory () : 'a memory ref =
     ref {
       names = [Hashtbl.create 10];
-      current_expr = [[]];
+      current_expr = [{ urs = [] }];
       data = Hashtbl.create 10;
-      next_id = ref { v = 0 };
+      next_id = ref { ac = 0 };
       parent = None;
+      gc_infos = { old_pop = 0 };
     }
 
   (*
@@ -178,73 +195,75 @@ end = struct
   let make_empiled_memory (mem : 'a memory ref) : 'a memory ref =
     ref {
       names = (Hashtbl.create 10)::(!mem.names);
-      current_expr = (!mem.current_expr);
+      current_expr = {urs = []}::(!mem.current_expr);
       data = !mem.data;
       next_id = ref (!(!mem.next_id));
       parent = !mem.parent;
+      gc_infos = !mem.gc_infos;
     }
   (**
    * New memory stack used for method calls
    *)
   let make_memory_stack (mem : 'a memory ref) : 'a memory ref =
-    let names = List.hd (List.rev !mem.names) in
     ref {
-      names = (Hashtbl.create 10)::[names];
-      current_expr = [[]];
+      names = (Hashtbl.create 10)::[List.hd (List.rev (!mem).names)];
+      current_expr = {urs = []} :: [List.hd (List.rev (!mem).current_expr)];
       data = !mem.data;
       next_id = ref (!(!mem.next_id));
       parent = Some(!mem);
+      gc_infos = !mem.gc_infos;
     }
 
-  let save_temp_var (mem : 'a memory ref) (addr : memory_address) : 'a memory ref =
-    let new_hd = addr :: (List.hd !mem.current_expr) in
-    ref {
-      names = !mem.names;
-      current_expr = new_hd :: (List.tl !mem.current_expr);
-      data = !mem.data;
-      next_id = ref (!(!mem.next_id));
-      parent = !mem.parent
-    }
+  let save_temp_var (mem : 'a memory ref) (addr : memory_address) : unit =
+    (List.hd (!mem).current_expr).urs <- (addr :: (List.hd (!mem).current_expr).urs)
 
   (***** Memory tools *************************************)
-  let apply_garbage_collector (mem : 'a memory ref) (keep : memory_address list) (f : 'a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) : unit =
-    let checker = Hashtbl.create 10 in
-    (* add all address to the checker *)
-    Hashtbl.iter
-      (fun mem_a obj ->
-        Hashtbl.add checker mem_a true
-      )
-      !mem.data;
-    (* remove all address linked to the memory from the checker *)
-    let rec check_stack = function
-      | None -> ()
-      | Some(s) -> (
-        List.iter
-          (fun n ->
-            Hashtbl.iter
-              (fun n addr ->
-                f mem (get_object_from_address mem addr) checker;
-                Hashtbl.remove checker addr
-              )
-              n
-          )
-        s.names;
-        check_stack s.parent;
-        ) in
-    check_stack (Some !mem);
-    (* remove all address linked to the 'keep' list from the checker *)
-    List.iter
-      (fun addr ->
-        f mem (get_object_from_address mem addr) checker;
-        Hashtbl.remove checker addr
-      )
-      keep;
-    (* remove all the objects, whose address is still in the checker, from the memory *)
-    Hashtbl.iter
-      (fun addr b ->
-        Hashtbl.remove !mem.data addr
-      )
-      checker
+  let apply_garbage_collector (mem : 'a memory ref) (force : bool) (f : 'a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) : unit =
+    if (Hashtbl.length (!mem).data) < 2 * (!mem).gc_infos.old_pop && (not force) then
+      ()
+    else
+      let checker = Hashtbl.create 10 in
+      (* add all address to the checker *)
+      Hashtbl.iter
+        (fun mem_a obj ->
+          Hashtbl.add checker mem_a true
+        )
+        !mem.data;
+      (* remove all address linked to the memory from the checker *)
+      let rec check_stack (memO : 'a memory option) : unit =
+        match memO with
+        | None -> ()
+        | Some(s) -> (
+          List.iter
+            (fun (n : reference_store) ->
+              Hashtbl.iter
+                (fun (n : name) (addr : memory_address) ->
+                  f mem (get_object_from_address mem addr) checker;
+                  Hashtbl.remove checker addr
+                )
+                n
+            )
+            s.names;
+          List.iter
+            (fun (ce : unnamed_reference_store) ->
+              List.iter
+                (fun (addr : memory_address) ->
+                  f mem (get_object_from_address mem addr) checker;
+                  Hashtbl.remove checker addr
+                )
+                ce.urs
+            )
+            s.current_expr;
+          check_stack s.parent;
+          ) in
+      check_stack (Some !mem);
+      (* remove all address left in the checker from the data *)
+      Hashtbl.iter
+        (fun addr b ->
+          Hashtbl.remove !mem.data addr;
+        )
+        checker;
+      (!mem).gc_infos.old_pop <- Hashtbl.length (!mem).data
 end
 
 (***** Object definition ******************************************)
@@ -307,8 +326,6 @@ let string_from_memory_unit (u : memory_unit) : string =
   | Primitive (Float f) -> string_of_float f
 ;;
 
-let java_this : Memory.name = "this";;
-let java_void : Memory.memory_address = 0;;
 (*
 Print a memory_unit
 *)
@@ -366,8 +383,23 @@ Give a reference to a new memory populated with the following :
 let make_populated_memory () : 'a Memory.memory ref =
   let mem = Memory.make_memory () in
   Memory.add_link_name_object mem "null" Null;
+  Memory.add_link_name_object mem "__1" (Primitive(Int 1));
+  Memory.add_link_name_object mem "__0" (Primitive(Int 0));
+  Memory.add_link_name_object mem "__true" (Primitive(Boolean true));
+  Memory.add_link_name_object mem "__false" (Primitive(Boolean false));
+  Memory.add_link_name_object mem "__0f" (Primitive(Float 0.0));
+  Memory.add_link_name_object mem "__empty_chr" (Primitive(Char (char_of_int 0)));
   mem
 ;;
+
+let java_this : Memory.name = "this";;
+let java_void : Memory.memory_address = 0;;
+let java_1 : Memory.memory_address = 1;;
+let java_0 : Memory.memory_address = 2;;
+let java_true : Memory.memory_address = 3;;
+let java_false : Memory.memory_address = 4;;
+let java_0f : Memory.memory_address = 5;;
+let java_empty_char : Memory.memory_address = 6;;
 
 let print_memory mem : unit =
   Memory.print_memory mem print_memory_unit
@@ -398,7 +430,6 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
         c.attributes
     end
   | Method m -> ()
-  | NativeMethod m -> ()
   | Object o ->
     begin
       remove_addr_from_checker mem (Memory.get_object_from_address mem o.t) checker;
@@ -411,13 +442,21 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
         )
         o.attributes
     end
-  | Null -> ()
   | Primitive p -> ()
+  | Null -> ()
+  | Array a ->
+    Array.iter
+      (fun (addr : Memory.memory_address) ->
+        remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
+        Hashtbl.remove checker addr
+      )
+      a.values
+  | NativeMethod m -> ()
 ;;
 
-let apply_garbage_collector mem keep : unit =
+let apply_garbage_collector mem force : unit =
   (* print_memory mem; *)
-  Memory.apply_garbage_collector mem keep remove_addr_from_checker;
+  Memory.apply_garbage_collector mem force remove_addr_from_checker;
   (* Printf.printf "!!!! Gargbage collected !!!!!\n"; *)
   (* print_memory mem; *)
 ;;
