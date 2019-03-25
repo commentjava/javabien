@@ -317,3 +317,5 @@ arr = new int[2][][4]{3, 4};
 arr = {3,4}.int[2][][4];
 ```
 
+- ~~Char literal are not parsed correctly~~ Fixed in ?????
+
