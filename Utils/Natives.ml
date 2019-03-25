@@ -149,6 +149,58 @@ let init_natives debug =
     let b = match (Memory.get_object_from_name mem "b") with Primitive(Int(i)) -> i in
     Return (Memory.add_object mem (Primitive(Int(pow a b)))) in
 
+  let native_init_socket (mem : 'a Memory.memory ref) : statement_return =
+    let this = Memory.get_object_from_name mem "this" in
+    let java_port_addr = get_attribute_value_address mem this "port" in
+    let port = match (Memory.get_object_from_address mem java_port_addr) with Primitive(Int(p)) -> p in
+    let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+
+    Unix.bind fd (Unix.ADDR_INET(Unix.inet_addr_any, port));
+    Unix.listen fd 10;
+
+    let fd_id = new_file fd in
+    let fd_cl_addr = Memory.get_address_from_name mem "FileDescriptor" in
+    let fd_cl = get_class_from_address mem fd_cl_addr in
+    let fd_obj = (Object {
+      t = fd_cl_addr;
+      attributes = copy_non_static_attrs mem fd_cl;
+    }) in
+    let fd_attr_addr = Memory.add_object mem (Primitive(Int(fd_id))) in
+    set_attribute_value_address mem fd_obj "fd" fd_attr_addr;
+    Return (Memory.add_object mem fd_obj) in
+
+  let native_accept_socket (mem : 'a Memory.memory ref) : statement_return =
+    let this = Memory.get_object_from_name mem "this" in
+    let java_fd_addr = get_attribute_value_address mem this "fd" in
+    let java_fd = match (Memory.get_object_from_address mem java_fd_addr) with Object o -> o in
+    let fd_addr = Hashtbl.find java_fd.attributes "fd" in
+    let fd_ = match (Memory.get_object_from_address mem fd_addr.v) with Primitive(Int(i)) -> i in
+    let fd = Hashtbl.find opened_files fd_ in
+
+    let socket_cl_addr = Memory.get_address_from_name mem "Socket" in
+    let socket_cl = get_class_from_address mem socket_cl_addr in
+
+    let fd_cl_addr = Memory.get_address_from_name mem "FileDescriptor" in
+    let fd_cl = get_class_from_address mem fd_cl_addr in
+
+    let (c_fd, cl_addr) = Unix.accept fd in
+    let c_fd_id = new_file c_fd in
+
+    let c_fd_obj = (Object {
+      t = fd_cl_addr;
+      attributes = copy_non_static_attrs mem fd_cl;
+    }) in
+    let c_fd_attr_addr = Memory.add_object mem (Primitive(Int(c_fd_id))) in
+    set_attribute_value_address mem c_fd_obj "fd" c_fd_attr_addr;
+    let c_fd_obj_addr = Memory.add_object mem c_fd_obj in
+    let socket_obj = (Object {
+      t = socket_cl_addr;
+      attributes = copy_non_static_attrs mem socket_cl;
+    }) in
+    set_attribute_value_address mem socket_obj "fd" c_fd_obj_addr;
+
+    Return (Memory.add_object mem socket_obj) in
+
   let natives = Hashtbl.create 10 in
   Hashtbl.add natives "Debug.dumpMemory" native_mem_dump;
   Hashtbl.add natives "Debug.debug" native_debug;
@@ -170,6 +222,10 @@ let init_natives debug =
   Hashtbl.add natives "FileOutputStream.close" native_close_file;
   Hashtbl.add natives "File.open" native_open_file;
   Hashtbl.add natives "Math.pow" native_int_pow;
+  Hashtbl.add natives "ServerSocket.init" native_init_socket;
+  Hashtbl.add natives "ServerSocket.accept" native_accept_socket;
+  Hashtbl.add natives "Socket.close" native_close_file;
+  Hashtbl.add natives "ServerSocket.close" native_close_file;
 
   (* According to unix spec 0, 1, 2 are always opened *)
   new_file Unix.stdin;

@@ -29,4 +29,17 @@ public final class System {
                 // setOut0(new PrintStream(new BufferedOutputStream(fdOut, 128), true));
                 // setErr0(new PrintStream(new BufferedOutputStream(fdErr, 128), true));
         }
+        static char[] arraycopy(char[] b, int l) {
+                int to_cpy;
+                if (b.length < l) {
+                        to_cpy = b.length;
+                } else {
+                        to_cpy = l;
+                }
+                char[] n = new char[to_cpy];
+                for (int i = 0; i < to_cpy; i++) {
+                        n[i] = b[i];
+                }
+                return n;
+        }
 }
