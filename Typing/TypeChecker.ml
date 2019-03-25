@@ -123,7 +123,7 @@ let is_constant_expression (exp: AST.expression_desc) =
 ;;
 
 let casting_conversion (from_type: Type.t) (to_type: Type.t) = (* 5.5 *)
-  print_string "\x1b[0;33mWarning: Casting conversions not implemented!\x1b[0m\n";
+Printf.eprintf "\x1b[0;33mWarning: Casting conversions not implemented!\x1b[0m\n";
   to_type (* TODO *)
 ;;
 
@@ -359,12 +359,12 @@ let rec check_statement env (statement: AST.statement) =
   )
   | AST.Block(s) -> check_statement_list env s
   | AST.Nop -> env
-  | AST.While(c, s) -> print_string "\x1b[0;33mWarning: Statement while not implemented!\x1b[0m\n"; env
-  | AST.For(a, e, e2, s) ->  print_string "\x1b[0;33mWarning: Statement for not implemented!\x1b[0m\n"; env
+  | AST.While(c, s) -> Printf.eprintf "\x1b[0;33mWarning: Statement while not implemented!\x1b[0m\n"; env
+  | AST.For(a, e, e2, s) ->  Printf.eprintf "\x1b[0;33mWarning: Statement for not implemented!\x1b[0m\n"; env
   | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s
   | AST.Return(e) -> check_return env e; env
-  | AST.Throw(e) -> print_string "\x1b[0;33mWarning: Statement throw not implemented!\x1b[0m\n"; env
-  | AST.Try(s, a, s2) -> print_string "\x1b[0;33mWarning: Statement try implemented!\x1b[0m\n"; env
+  | AST.Throw(e) -> Printf.eprintf "\x1b[0;33mWarning: Statement throw not implemented!\x1b[0m\n"; env
+  | AST.Try(s, a, s2) -> Printf.eprintf "\x1b[0;33mWarning: Statement try implemented!\x1b[0m\n"; env
   | AST.Expr(e) -> check_expression env e; env
 and check_statement_list env (statements: AST.statement list) =
     match statements with
@@ -461,7 +461,7 @@ let rec typing (ast: AST.t) (std_asts: AST.t list) doPrintTypeEnv =
     if doPrintTypeEnv then TypingEnv.print_classes_env env.classes_env;
     print_newline ();
     check_t env;
-    print_string "\nType checking \x1b[0;32mok\x1b[0m\n";
+    Printf.eprintf "\nType checking \x1b[0;32mok\x1b[0m\n";
     ast (* For now don't change the ast, in the future it might be changed to include to be a typed ast *)
   )
   with e -> TypeExcept.print_error e; ast
