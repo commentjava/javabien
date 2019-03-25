@@ -57,7 +57,6 @@
 
 class Main{
   static void main(){
-    Debug.dumpMemory();
     Double a = new Double(2.61);
 
     Debug.debug(Double.MAX_EXPONENT);
@@ -123,7 +122,5 @@ class Main{
     Debug.debug(copyd.compareTo(dfo));
     Debug.debug((new Double(5.87)).compareTo(copyd));
     Debug.debug((new Double(35.29)).compareTo(copyd));
-
-    Debug.dumpMemory();
   }
 }
