@@ -5,6 +5,7 @@
 //: 0
 //: 2
 //: 0
+//: 5
 
 class X {
         int x;
@@ -30,5 +31,6 @@ class Main {
 
                 int[] myArray = new int[5];
                 Debug.debug(myArray[0]);
+                Debug.debug(myArray.length);
         }
 }

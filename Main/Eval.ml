@@ -171,9 +171,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
     (explode s) in
     let str_c_mem = Memory.add_object mem (Primitive(Int(str_c))) in
-    let str_mem = Memory.add_object mem (Array {
-      values = Array.of_list str_v;
-    }) in
+    let str_mem = create_array mem str_v in
     set_attribute_value_address mem str_obj "value" str_mem;
     set_attribute_value_address mem str_obj "count" str_c_mem;
     Memory.add_object mem str_obj
@@ -223,14 +221,8 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
             | _ -> 0 (* TODO : raise an error *)
           in
           match List.tl sizes_addr with
-          | [] ->
-            Memory.add_object mem (Array {
-              values = Array.of_list (makeList empty_value first_size []);(*(repeat (empty_value t) hd);*)
-            })
-          | tl ->
-            Memory.add_object mem (Array {
-              values = Array.of_list (makeList (build_array tl) first_size []);(*(repeat (build_array tl) hd);*)
-            })
+          | [] -> create_array mem (makeList empty_value first_size []) (*(repeat (empty_value t) hd);*)
+          | tl -> create_array mem (makeList (build_array tl) first_size [])
         in
         let sizes_addr = List.map (execute_expression mem) sizes in
         build_array sizes_addr
@@ -279,10 +271,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
         with Not_found -> print_memory mem; raise (MemoryError ("Name " ^ n ^ " not found in scope"))
       end
     | AST.ArrayInit (values) ->
-        let arr = Array.of_list (List.map (execute_expression mem) values) in
-        Memory.add_object mem (Array {
-          values = arr;
-        })
+        create_array mem (List.map (execute_expression mem) values)
     | AST.Array (obj_name, attrs) ->
         let rec fetch_obj obj_addr = function
           | [] -> obj_addr;
@@ -496,9 +485,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       Hashtbl.add cl.methods m.mname method_addr
       )
   and create_args mem args : Memory.memory_address list =
-    [Memory.add_object mem (Array {
-      values = Array.of_list (List.map (fun a -> create_java_string mem a) args)
-    })]
+    [create_array mem (List.map (fun a -> create_java_string mem a) args)]
     in
 
   let natives = Natives.init_natives debug in

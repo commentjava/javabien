@@ -277,7 +277,8 @@ and m_native_method = {
   body : memory_unit Memory.memory ref -> statement_return
 }
 and m_array =  {
-  values : Memory.memory_address array
+  values : Memory.memory_address array;
+  attributes : (Memory.name, m_attr) Hashtbl.t;
 }
 and m_primitive =
   | Int of int
@@ -426,11 +427,11 @@ let get_method_address (mem : memory_unit Memory.memory ref) obj n =
     | Object o -> (
       match Memory.get_object_from_address mem o.t with
       | Class c -> c.methods
-      | _ -> raise (MemoryError "Only Classes and objects can have methods")
+      | _ -> raise (MemoryError "Only classes and objects can have methods")
     )
     | Class c -> c.methods
     | Null -> raise (MemoryError "NullException")
-    | _ -> raise (MemoryError "Only Classes and objects can have methods") in
+    | _ -> raise (MemoryError "Only classes and objects can have methods") in
   Hashtbl.find methods n;;
 
 let get_class_from_address mem addr : m_class =
@@ -442,8 +443,9 @@ let get_attribute_value_address (mem : memory_unit Memory.memory ref) (obj : mem
   let attributes = match obj with
   | Object o -> [o.attributes; (get_class_from_address mem o.t).attributes]
   | Class c -> [c.attributes]
+  | Array a -> [a.attributes]
   | Null -> raise (MemoryError "NullException")
-  | _ -> raise (MemoryError "Only Classes and objects can have methods") in
+  | _ -> raise (MemoryError "Only classes and objects can have attributes") in
   let addr, found = List.fold_left (fun (c, found) attrs ->
     match found with
     | true -> c, found
@@ -491,4 +493,17 @@ let copy_non_static_attrs (mem : memory_unit Memory.memory ref) (cl : m_class) :
     | true -> ()
   )
   cl.attributes;
-  attrs
+  attrs;;
+
+let create_array mem (ls : Memory.memory_address list) : Memory.memory_address =
+  let length_addr = Memory.add_object mem (Primitive(Int(List.length ls))) in
+  let arr_attrs = Hashtbl.create 10 in
+  Hashtbl.add arr_attrs "length" ({
+    v = length_addr;
+    modifiers = [];
+  });
+  Memory.add_object mem (Array {
+    values = Array.of_list ls;
+    attributes = arr_attrs;
+  })
+
