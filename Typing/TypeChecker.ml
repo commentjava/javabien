@@ -10,6 +10,71 @@ let ensure_boolean_type (ptype: Type.primitive) =
   | _ -> raise(TypeExcept.WrongType "Expected a boolean")
 ;;
 
+(* from t1 to t2 *)
+let check_narrowing_conversion (t1: Type.t) (t2: Type.t) = (* 5.1.3 *)
+  match t1 with
+  | Type.Primitive(Short) -> (
+    match t2 with
+    | Type.Primitive(Byte) -> true
+    | Type.Primitive(Char) -> true
+    | _ -> false
+  )
+  | Type.Primitive(Char) -> (
+    match t2 with
+    | Type.Primitive(Byte) -> true
+    | Type.Primitive(Short) -> true
+    | _ -> false
+  )
+  | Type.Primitive(Int) -> (
+        match t2 with
+    | Type.Primitive(Byte) -> true
+    | Type.Primitive(Short) -> true
+    | Type.Primitive(Char) -> true
+    | _ -> false
+  )
+  | Type.Primitive(Long) -> (
+    match t2 with
+    | Type.Primitive(Byte) -> true
+    | Type.Primitive(Short) -> true
+    | Type.Primitive(Char) -> true
+    | Type.Primitive(Int) -> true
+    | _ -> false
+  )
+  | Type.Primitive(Float) -> (
+    match t2 with
+    | Type.Primitive(Byte) -> true
+    | Type.Primitive(Short) -> true
+    | Type.Primitive(Char) -> true
+    | Type.Primitive(Int) -> true
+    | Type.Primitive(Long) -> true
+    | _ -> false
+  )
+  | Type.Primitive(Double) -> (
+    match t2 with
+    | Type.Primitive(Byte) -> true
+    | Type.Primitive(Short) -> true
+    | Type.Primitive(Char) -> true
+    | Type.Primitive(Int) -> true
+    | Type.Primitive(Long) -> true
+    | Type.Primitive(Float) -> true
+    | _ -> false
+  )
+  | _ -> false
+;;
+
+(* from t1 to t2 *)
+let check_assignment_conversion (t1: Type.t) (t2: Type.t) =
+  if t1 = t2 then true else (
+    if check_narrowing_conversion t1 t2 then true else (
+      if (t2 = Type.Primitive(Double)) || (t2 = Type.Primitive(Float)) then
+        match t1 with
+        | Type.Primitive(_) -> true
+        | _ -> false
+      else false
+    )
+  )
+;;
+
 let unboxing_conversion (type_: Type.t) = (* 5.1.8 *)
   let convertible_ref = ["Boolean"; "Byte"; "Character"; "Short"; "Integer"; "Long"; "Float"; "Double"] in
   match type_ with
@@ -227,8 +292,8 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   | AST.AssignExp(l_exp, o, r_exp) -> (
     let r_type = (check_expression env r_exp) in
     let l_type = (check_expression env l_exp) in
-    match (r_type = l_type)  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
-    | true -> r_type
+    match (check_assignment_conversion r_type l_type)  with (* TODO binary_numeric_promotion and unboxing_conversion is probably needed + check += -= etc *)
+    | true -> l_type
     | false -> raise(TypeExcept.WrongType "Can't assign a different type") (* TODO Inheritance *)
   )
   | AST.Post(e, o) -> Type.Primitive(ensure_numeric_type (unboxing_conversion (check_expression env e)))
