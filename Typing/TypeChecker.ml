@@ -25,7 +25,8 @@ let check_narrowing_conversion (t1: Type.t) (t2: Type.t) = (* 5.1.3 *)
     | Type.Primitive(Short) -> true
     | _ -> false
   )
-  | Type.Primitive(Int) -> (
+  (* Only the two matches above can be used when using narrowing conversion for assignment (our case here (TO CHANGE)) *)
+  (* | Type.Primitive(Int) -> (
         match t2 with
     | Type.Primitive(Byte) -> true
     | Type.Primitive(Short) -> true
@@ -58,7 +59,7 @@ let check_narrowing_conversion (t1: Type.t) (t2: Type.t) = (* 5.1.3 *)
     | Type.Primitive(Long) -> true
     | Type.Primitive(Float) -> true
     | _ -> false
-  )
+  ) *)
   | _ -> false
 ;;
 
