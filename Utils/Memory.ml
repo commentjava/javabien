@@ -404,6 +404,15 @@ let print_memory mem : unit =
 ;;
 
 let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.memory_address, bool) Hashtbl.t) : unit =
+  let remove_attrs attrs =
+      Hashtbl.iter
+        (fun n attr ->
+          let addr = attr.v in
+          remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
+          Hashtbl.remove checker addr
+        )
+        attrs in
+
   match mem_u with
   | Class c->
     begin
@@ -419,26 +428,13 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
           Hashtbl.remove checker addr
         )
         c.constructors;
-      Hashtbl.iter
-        (fun n attr ->
-          let addr = attr.v in
-          remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
-          Hashtbl.remove checker addr
-        )
-        c.attributes
+      remove_attrs c.attributes
     end
   | Method m -> ()
   | Object o ->
     begin
       remove_addr_from_checker mem (Memory.get_object_from_address mem o.t) checker;
-      Hashtbl.remove checker o.t;
-      Hashtbl.iter
-        (fun n attr ->
-          let addr = attr.v in
-          remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
-          Hashtbl.remove checker addr
-        )
-        o.attributes
+      remove_attrs o.attributes
     end
   | Primitive p -> ()
   | Null -> ()
@@ -448,7 +444,8 @@ let rec remove_addr_from_checker mem (mem_u : memory_unit) (checker : (Memory.me
         remove_addr_from_checker mem (Memory.get_object_from_address mem addr) checker;
         Hashtbl.remove checker addr
       )
-      a.values
+      a.values;
+    remove_attrs a.attributes
   | NativeMethod m -> ()
 ;;
 
