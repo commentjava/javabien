@@ -57,7 +57,7 @@ let is_constant_expression (exp: AST.expression_desc) =
 ;;
 
 let casting_conversion (from_type: Type.t) (to_type: Type.t) = (* 5.5 *)
-  raise(Failure "casting_conversion not implemented");
+  print_string "\x1b[0;33mWarning: Casting conversions not implemented!\x1b[0m\n";
   to_type (* TODO *)
 ;;
 
@@ -75,7 +75,7 @@ let check_value env (value: AST.value) =
   | AST.Int(s) -> Type.Primitive(Type.Int)
   | AST.Float(s) -> Type.Primitive(Type.Float)
   | AST.Char(s) -> Type.Primitive(Type.Char)
-  (*| AST.Null -> Type.Ref(Type.null_type)*)
+  | AST.Null -> Type.Ref({tpath = []; tid = "Null"})
   | AST.Boolean(s) -> Type.Primitive(Type.Boolean)
 ;;
 
@@ -236,7 +236,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     let exp_type = unboxing_conversion (check_expression env e) in
     match o with
     | Op_not -> Type.Primitive(ensure_boolean_type exp_type)
-    | Op_neg -> Type.Primitive(ensure_boolean_type exp_type)
+    | Op_neg -> Type.Primitive(ensure_numeric_type exp_type)
     | Op_incr -> Type.Primitive(ensure_numeric_type exp_type)
     | Op_decr -> Type.Primitive(ensure_numeric_type exp_type)
     | Op_bnot -> Type.Primitive(ensure_boolean_type exp_type)
@@ -293,17 +293,35 @@ let rec check_statement env (statement: AST.statement) =
   )
   | AST.Block(s) -> check_statement_list env s
   | AST.Nop -> env
-  | AST.While(c, s) -> raise(Failure "Statement while not implemented")
-  | AST.For(a, e, e2, s) -> raise(Failure "Statement for not implemented")
+  | AST.While(c, s) -> print_string "\x1b[0;33mWarning: Statement while not implemented!\x1b[0m\n"; env
+  | AST.For(a, e, e2, s) ->  print_string "\x1b[0;33mWarning: Statement for not implemented!\x1b[0m\n"; env
   | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s
   | AST.Return(e) -> check_return env e; env
-  | AST.Throw(e) -> raise(Failure "Statement throw not implemented")
-  | AST.Try(s, a, s2) -> raise(Failure "Statement try not implemented")
+  | AST.Throw(e) -> print_string "\x1b[0;33mWarning: Statement throw not implemented!\x1b[0m\n"; env
+  | AST.Try(s, a, s2) -> print_string "\x1b[0;33mWarning: Statement try implemented!\x1b[0m\n"; env
   | AST.Expr(e) -> check_expression env e; env
 and check_statement_list env (statements: AST.statement list) =
     match statements with
     | [] -> env
     | h::t -> check_statement_list (check_statement env h) t
+;;
+
+let rec check_statement_for_return (statement: AST.statement) (return_count: int) =
+  let check_statement_if condition if_statement else_statement =
+    let if_return_count = check_statement_for_return if_statement return_count in
+    match else_statement with
+    | Some(else_s) -> check_statement_for_return else_s if_return_count
+    | None -> if_return_count
+  in
+  match statement with
+  | AST.Block(s) -> check_statement_list_for_return s return_count
+  | AST.If(cond_e, if_s, else_s) -> check_statement_if cond_e if_s else_s
+  | AST.Return(e) -> return_count+1
+  | _ -> return_count
+and check_statement_list_for_return (statements: AST.statement list) (return_count: int) =
+    match statements with
+    | [] -> return_count
+    | h::t -> check_statement_list_for_return t (check_statement_for_return h return_count)
 ;;
 
 (* javamethod *)
@@ -313,17 +331,25 @@ let check_javamethod (env: TypingEnv.tc_env) (javamethod: TypingEnv.javamethod) 
     exec_env = (TypingEnv.exec_add_arguments env.exec_env (Env.key_value_pairs javamethod.args.args_types)) ;
     current_method = Some javamethod
   } in
-  let rec check_return_statements statements return_count =
+  (* let rec check_return_statements statements return_count =
     match statements with
-    | [] -> if javamethod.return_type <> Type.Void && return_count = 0 then
-      raise(TypeExcept.MissingReturnStatement);
+    | [] -> (
+      if javamethod.return_type <> Type.Void && return_count = 0 then (
+        Location.print javamethod.loc;
+        if not (List.mem AST.Native javamethod.modifiers) && not (List.mem AST.Abstract javamethod.modifiers) then
+          raise(TypeExcept.MissingReturnStatement)
+      )
+    )
     | h::t -> (
       match h with
       | AST.Return(e) -> check_return_statements t (return_count+1)
       | _ -> check_return_statements t return_count
     )
-  in
-  check_return_statements javamethod.body 0;
+  in *)
+  let return_count = check_statement_list_for_return javamethod.body 0 in
+  if javamethod.return_type <> Type.Void && return_count = 0 &&
+    not (List.mem AST.Native javamethod.modifiers) && not (List.mem AST.Abstract javamethod.modifiers) then
+      raise(TypeExcept.MissingReturnStatement);
   check_statement_list env javamethod.body;
   ()
 ;;

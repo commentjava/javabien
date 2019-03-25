@@ -400,7 +400,7 @@ let rec get_elt_of_enclosed_class enclosing_class (elt: string) (qualified_name:
     try (
       let enclosed_class = Env.find enclosing_class.types h in
       get_elt_of_enclosed_class enclosed_class elt t
-    ) with Not_found ->  print_string "3"; raise(TypeExcept.CannotFindSymbol(h))
+    ) with Not_found -> raise(TypeExcept.CannotFindSymbol(h))
   )
 ;;
 
@@ -430,7 +430,7 @@ let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list)
         match elt with
         | ConstList(c) -> check_constructors c
       )
-    ) with Not_found -> print_string "1"; raise(TypeExcept.CannotFindSymbol(r.tid))
+    ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
   )
   | _ -> raise(TypeExcept.WrongType "Only reference types have constructors")
 ;;
@@ -473,8 +473,7 @@ let class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
         (* Attr could be a enclosed type *)
         | Type(c) -> Type.Ref({tpath = r.tpath@[r.tid] ; tid = attr_name})
       )
-    ) with Not_found ->
-      raise(TypeExcept.CannotFindSymbol(r.tid))
+    ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
   )
   | _ -> raise(TypeExcept.WrongType "Can't access an attribute if it's not a reference type")
 ;;
@@ -519,6 +518,8 @@ let get_var_type (env: tc_env) (varname: string) =
         let type_ = Env.find env.classes_env varname in
         (* TODO: check accessibility *)
         Type.Ref({tpath = [] ; tid = varname})
+      ) else if varname = "this" then (
+        Type.Ref({tpath = [] ; tid = env.current_class})
       ) else raise(TypeExcept.CannotFindSymbol(varname))
     ) with Not_found -> raise(TypeExcept.CannotFindSymbol(env.current_class))
   )
