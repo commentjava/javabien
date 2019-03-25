@@ -175,19 +175,39 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       end
     | AST.NewArrayEmpty (t, sizes) ->
       begin
-        let empty_value = function
-        | Type.Primitive(Int) -> Memory.add_object mem (Primitive(Int(0)))
-        | _ -> raise (NotImplemented "EmptyArray not implemented for this type") in
-        let rec repeat f = function
-        | 0 -> []
-        | n -> (f) :: repeat f (n-1) in
-        let rec build_array = function
-        | [hd] -> Memory.add_object mem (Array {
-          values = Array.of_list (repeat (empty_value t) hd);
-        })
-        | hd :: tl -> Memory.add_object mem (Array {
-          values = Array.of_list (repeat (build_array tl) hd);
-        }) in
+        let empty_value =
+          match t with
+          | Type.Primitive(Boolean) -> Memory.add_object mem (Primitive(Boolean(false)))
+          | Type.Primitive(Char) -> Memory.add_object mem (Primitive(Char(' ')))
+          | Type.Primitive(Int) -> Memory.add_object mem (Primitive(Int(0)))
+          | Type.Primitive(Long) -> Memory.add_object mem (Primitive(Int(0)))
+          | Type.Primitive(Float) -> Memory.add_object mem (Primitive(Float(0.0)))
+          | Type.Primitive(Double) -> Memory.add_object mem (Primitive(Float(0.0)))
+          | Type.Ref(r) -> 0
+          | _ -> raise (NotImplemented "EmptyArray not implemented for this type")
+        in
+        let rec makeList elt n res =
+          if n <= 0 then
+            res
+          else
+            makeList elt (n - 1) (elt::res)
+        in
+        let rec build_array sizes_addr =
+          let first_size =
+            match Memory.get_object_from_address mem (List.hd sizes_addr) with
+            | Primitive(Int(i)) -> i
+            | _ -> 0 (* TODO : raise an error *)
+          in
+          match List.tl sizes_addr with
+          | [] ->
+            Memory.add_object mem (Array {
+              values = Array.of_list (makeList empty_value first_size []);(*(repeat (empty_value t) hd);*)
+            })
+          | tl ->
+            Memory.add_object mem (Array {
+              values = Array.of_list (makeList (build_array tl) first_size []);(*(repeat (build_array tl) hd);*)
+            })
+        in
         let sizes_addr = List.map (execute_expression mem) sizes in
         build_array sizes_addr
       end
