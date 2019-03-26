@@ -1,3 +1,6 @@
+package java.lang;
+
+
 class Math {
 
   /** Fields */

@@ -57,6 +57,7 @@ let div_primitives mem = function
 (** Operation to mod two Primitive types *)
 let mod_primitives mem = function
   | Int(i1), Int(i2) -> Memory.add_object mem (Primitive(Int(i1 mod i2)));
+  | Float(f1), Float(f2) -> Memory.add_object mem (Primitive(Float(mod_float f1 f2)));
   | _ -> raise (InvalidOp "Cannot mod those primitives");;
 
 let eq_primitives mem = function

@@ -1,7 +1,7 @@
 package java.lang;
 
 class Double{
-  /** Hacks */
+  /** *** Hacks *** */
   private static native final double _max_value();
   private static native final double _min_normal();
   private static native final double _min_value();
@@ -13,71 +13,54 @@ class Double{
   private static native final boolean _isInfinite(double d);
   private static native final boolean _intValue(double d);
 
-  /** Fields */
-  public static final int MAX_EXPONENT = 1023;
-  public static final double MAX_VALUE = Double._max_value();
-  public static final int MIN_EXPONENT = -1022;
-  public static final double MIN_NORMAL = Double._min_normal();
-  public static final double MIN_VALUE = Double._min_value();
-  public static final double NaN = Double._nan();
-  public static final double NEGATIVE_INFINITY = Double._negative_infinity();
-  public static final double POSITIVE_INFINITY = Double._positive_infinity();
-  public static final int SIZE = 64;
+
+
+  /** *** Fields *** */
+
+  /** The number of bytes used to represent a double value. */
   public static final int BYTES = 8;
+  /** Maximum exponent a finite double variable may have. */
+  public static final int MAX_EXPONENT = 1023;
+  /** A constant holding the largest positive finite value of type double, (2-2^-52)·2^1023. */
+  public static final double MAX_VALUE = Double._max_value();
+  /** Minimum exponent a normalized double variable may have. */
+  public static final int MIN_EXPONENT = -1022;
+  /** A constant holding the smallest positive normal value of type double, 2^-1022. */
+  public static final double MIN_NORMAL = Double._min_normal();
+  /** A constant holding the smallest positive nonzero value of type double, 2^-1074. */
+  public static final double MIN_VALUE = Double._min_value();
+  /** A constant holding a Not-a-Number (NaN) value of type double. */
+  public static final double NaN = Double._nan();
+  /** A constant holding the negative infinity of type double. */
+  public static final double NEGATIVE_INFINITY = Double._negative_infinity();
+  /** A constant holding the positive infinity of type double. */
+  public static final double POSITIVE_INFINITY = Double._positive_infinity();
+  /** A constant holding the positive infinity of type double. */
+  public static final int SIZE = 64;
+  //** The Class instance representing the primitive type double. */
   // public static final java.lang.Class TYPE
-  // private static final long serialVersionUID = -9172774392245257468L;
 
   /** The double value. */
   private final double value;
 
-  /**
-   * Initializes a newly created <code>Double</code> object so that it
-   * represents a zero value.
-   */
+
+
+  /** *** Constructors *** */
+
+  /** Constructs a newly allocated Double object that represents the primitive double argument. */
   public Double(double d){
     this.value = d;
   }
+  //** Constructs a newly allocated Double object that represents the floating-point value of type double represented by the string. */
   // public Double(String s) throws java.lang.NumberFormatException // Not possible due to overload
 
-  // public static String toString(double d)
-  // public static String toHexString(double d)
-  // public static Double valueOf(String s) // Not possible due to overload
-  public static Double valueOf(double d){
-    return new Double(d);
-  }
-  // public static double parseDouble(String s) // Not possible due to exceptions raising
-  public static boolean isNaN(double d){
-    return Double._isNaN(d);
-  }
-  public static boolean isInfinite(double d){
-    return Double._isInfinite(d);
-  }
-  public static boolean isFinite(double d){
-    return !(Double._isInfinite(d));
-  }
-  // public boolean isNaN() // Not possible due to overload
-  // public boolean isInfinite() // Not possible due to overload
-  // public String toString()
+
+
+  /** *** Methods *** */
+
   // public byte byteValue()
-  // public short shortValue()
-  public int intValue(){
-    return Double._intValue(this.value);
-  }
-  public long longValue(){
-    return Double._intValue(this.value);
-  }
-  public float floatValue(){
-    return this.value;
-  }
-  public double doubleValue(){
-    return this.value;
-  }
-  // public int hashCode()
-  // public static int hashCode(double d)
-  // public boolean equals(Object obj)
-  // public static long doubleToLongBits(double d)
-  // public static native long doubleToRawLongBits(double d)
-  // public static native double longBitsToDouble(long l)
+
+  /** Compares the two specified double values. */
   public static int compare(double d1, double d2){
     if(Double.isNaN(d1) && Double.isNaN(d2)){ return 0; }
     else if(Double.isNaN(d1)) { return 1; }
@@ -86,12 +69,64 @@ class Double{
     else if(d1 == d2) { return 0; }
     else { return -1; }
   }
+
+  /** Compares two Double objects numerically. */
   public int compareTo(Double anotherDouble){
     return Double.compare(this.value, anotherDouble.doubleValue());
   }
-  public static double sum(double d1, double d2){
-    return d1 + d2;
+
+  // public static long doubleToLongBits(double d)
+
+  // public static long doubleToRawLongBits(double d)
+
+  /** Returns the double value of this Double object. */
+  public double doubleValue(){
+    return this.value;
   }
+
+  // public boolean equals(Object obj)
+
+  /** Returns the value of this Double as a float after a narrowing primitive conversion. */
+  public float floatValue(){
+    return this.value;
+  }
+
+  // public int hashCode()
+
+  // public static int hashCode(double d)
+
+  /** Returns the value of this Double as an int after a narrowing primitive conversion. */
+  public int intValue(){
+    return Double._intValue(this.value);
+  }
+
+  /** Returns true if the argument is a finite floating-point value; returns false otherwise (for NaN and infinity arguments). */
+  public static boolean isFinite(double d){
+    return !(Double._isInfinite(d));
+  }
+
+  // public boolean isInfinite() // Not possible due to overload
+
+  /** Returns true if the specified number is infinitely large in magnitude, false otherwise. */
+  public static boolean isInfinite(double d){
+    return Double._isInfinite(d);
+  }
+
+  // public boolean isNaN() // Not possible due to overload
+
+  /** Returns true if the specified number is a Not-a-Number (NaN) value, false otherwise. */
+  public static boolean isNaN(double d){
+    return Double._isNaN(d);
+  }
+
+  // public static double longBitsToDouble(long l)
+
+  /** Returns the value of this Double as a long after a narrowing primitive conversion. */
+  public long longValue(){
+    return Double._intValue(this.value);
+  }
+
+  /** Returns the greater of two double values as if by calling Math.max. */ // TODO
   public static double max(double d1, double d2){
     if(d1 > d2){
       return d1;
@@ -100,6 +135,8 @@ class Double{
       return d2;
     }
   }
+
+  /** Returns the smaller of two double values as if by calling Math.min. */ // TODO
   public static double min(double d1, double d2){
     if(d1 > d2){
       return d2;
@@ -108,7 +145,72 @@ class Double{
       return d1;
     }
   }
-  // public bridge synthetic int compareTo(Double)
 
+  // public static double parseDouble(String s) // Not possible due to exceptions raising
 
+  // public short shortValue()
+
+  /** Adds two double values together as per the + operator. */
+  public static double sum(double d1, double d2){
+    return d1 + d2;
+  }
+
+  // public static String toHexString(double d)
+
+  // public String toString()
+
+  public static String toString(double d){
+    if(Double._isNaN(d)){ return "NaN"; }
+    String res = "";
+    if(d < 0){ res = String.concat(res, "-"); }
+    if(Double._isInfinite(d)){ res = String.concat(res, "Infinity"); }
+    else if(d == 0){ res = String.concat(res, "0.0"); }
+    else if(0.001 <= d && d < 10000000){
+      int nb_digits = 15, pos_digit = -nb_digits, digit;
+      float d_copy = d;
+      for(int i = 0 ; i < nb_digits ; i ++){ d_copy *= 10; }
+      d_copy += 0.5;
+      String s_digits = "";
+      boolean skip0 = true;
+      while(pos_digit < 0 || d_copy >= 1){
+        digit = Double._intValue(d_copy % 10.0);
+        if(!(skip0 && digit == 0)){
+          skip0 = false;
+          s_digits = String.concat(String.fromInteger(digit), s_digits);
+        }
+        d_copy /= 10.0;
+        pos_digit ++;
+        if(pos_digit == -1){
+          skip0 = false;
+        }
+        if(pos_digit == 0){
+          s_digits = String.concat(".", s_digits);
+        }
+      }
+      res = String.concat(res, s_digits);
+    }
+    else{
+      int p = 0;
+      float d_copy = d;
+      while(d_copy >= 10){
+        d_copy /= 10.0;
+        p ++;
+      }
+      while(d_copy < 1){
+        d_copy *= 10.0;
+        p --;
+      }
+      res = Double.toString(d_copy);
+      res = String.concat(res, "E");
+      res = String.concat(res, String.fromInteger(p));
+    }
+    return res;
+  }
+
+  /** Returns a Double instance representing the specified double value. */
+  public static Double valueOf(double d){
+    return new Double(d);
+  }
+
+  // public static Double valueOf(String s) // Not possible due to overload
 }

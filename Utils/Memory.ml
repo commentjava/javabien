@@ -462,7 +462,7 @@ let apply_garbage_collector mem force : unit =
   (* print_memory mem; *)
 ;;
 
-let get_method_address (mem : memory_unit Memory.memory ref) obj n =
+let get_method_address (mem : memory_unit Memory.memory ref) obj (n : Memory.name) =
   let methods = match obj with
     | Object o -> (
       match Memory.get_object_from_address mem o.t with
