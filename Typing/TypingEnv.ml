@@ -26,6 +26,7 @@ type javaconst = {
 
 type javaclass = {
   attributes: (string, javamattribute) Env.t;
+  parent: Type.t;
   methods: (string, javamethod) Env.t;
   constructors: (string, javaconst) Env.t;
   types : classes_env; (* For enclosed classes *)
@@ -134,6 +135,8 @@ let rec print_javaclass (v: javaclass) depth =
     print_string ("\n" ^ depth ^ "|  ");
     print_modifiers v.modifiers depth;
   );
+  print_string ("\n" ^ depth ^ "├─ ");
+  print_string ("Parent: " ^ (Type.stringOf v.parent));
   print_string ("\n" ^ depth ^ "├─ ");
   print_constructors v.constructors (depth ^ "│  ");
   print_string ("\n" ^ depth ^ "├─ ");
@@ -344,6 +347,7 @@ and env_astclass (env: classes_env) (astclass_name: string) (astclass: AST.astcl
   Env.define env astclass_name {
     attributes;
     methods;
+    parent = Type.Ref(astclass.cparent);
     constructors = consts;
     types;
     modifiers;
@@ -535,7 +539,13 @@ let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list)
 let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (params: Type.t list) =
   let rec check_methods (mlist: javamethod list) (check_parent: bool) =
     match mlist with
-    | [] -> raise(TypeExcept.CannotFindSymbol(mname))
+    | [] -> (
+      (* retry and look for methods in parents *)
+      if Env.mem env.classes_env env.current_class then (
+        let class_ = Env.find env.classes_env env.current_class in
+        function_return_type env class_.parent mname params
+      ) else raise(TypeExcept.CannotFindSymbol(mname))
+    )
     | [m] -> (
       let matching_args = check_method_args params m.args.types check_parent false in
       if matching_args then m.return_type
