@@ -43,9 +43,7 @@ end = struct
     gc_infos : gci; (* informations for the GC *)
   }
 
-  (*
-  Print a memory
-  *)
+  (** Print the whole memory [m] using the [f] fonction to print a memory unit *)
   let print_memory (m : 'a memory ref) (f : 'a -> unit) : unit =
     Printf.printf "\n======================\n";
     Printf.printf "==== MEMORY DUMP =====\n";
@@ -89,19 +87,19 @@ end = struct
     print_data (!(!m.next_id).ac);
     Printf.printf "\n\n"
 
-  (***** Memory getter ************************************)
-  (* HIDDEN
-  Give the next free memory_address and increase the counter
-  *)
+  (***** Memory getters ************************************)
+  (** HIDDEN
+   * Return the next free memory_address and increase the memory counter
+   *)
   let get_next_address (addr_c : address_counter ref) : memory_address =
     let mem_a = !addr_c.ac in
     !addr_c.ac <- mem_a + 1;
     mem_a
 
-  (*
-  Give the memory_address correponding to the given name
-  Raise Not_found if the name is not linked
-  *)
+  (**
+   * Return the memory_address correponding to the given name
+   * Raise Not_found if the name is not linked
+   *)
   let get_address_from_name (mem : 'a memory ref) (n : name) : memory_address =
     let rec aux (names : reference_store list) : memory_address =
       match names with
@@ -113,10 +111,10 @@ end = struct
     in
     aux !mem.names
 
-  (*
-  Give the memory_unit corresponding to the given memory_address
-  Raise Not_found if the memory_address is not linked
-  *)
+  (**
+   * Give the memory_unit corresponding to the given memory_address
+   * Raise Not_found if the memory_address is not linked
+   *)
   let get_object_from_address (mem : 'a memory ref) (mem_a : memory_address) : 'a =
     try
       Hashtbl.find !mem.data mem_a
@@ -127,17 +125,17 @@ end = struct
           raise Not_found
         end
 
-  (*
-  Give the memory_unit corresponding to the given name
-  Raise Not_found if the name is not linked
-  *)
+  (**
+   * Give the memory_unit corresponding to the given name
+   * Raise Not_found if the name is not linked
+   *)
   let get_object_from_name (mem : 'a memory ref) (n : name) : 'a =
     get_object_from_address mem (get_address_from_name mem n)
 
-  (***** Memory setter ************************************)
-  (*
-  Link the given name with the given memory_address
-  *)
+  (***** Memory setters ************************************)
+  (**
+   * Link the given name with the given memory_address
+   *)
   let add_link_name_address (mem : 'a memory ref) (n : name) (mem_a : memory_address) : unit =
     let rec find_name_in_stack (names : reference_store list) : bool =
       match names with
@@ -156,29 +154,29 @@ end = struct
       | [] -> raise (MemoryError "Memory is missing")
       | hname::tnames -> Hashtbl.replace hname n mem_a
 
-  (*
-  Insert the given memory_unit in the memory
-  Give the memory_address assigned to this memory_unit
-  *)
+  (**
+   * Insert the given memory_unit in the memory
+   * Give the memory_address assigned to this memory_unit
+   *)
   let add_object (mem : 'a memory ref) (mem_u : 'a) : memory_address =
     let mem_a = get_next_address !mem.next_id in
     Hashtbl.add !mem.data mem_a mem_u;
     mem_a
 
-  (*
-  Insert the given memory_unit in the memory
-  Link the given name to this memory_unit
-  Give the memory_address assigned to the memory_unit
-  *)
+  (**
+   * Insert the given memory_unit in the memory
+   * Link the given name to this memory_unit
+   * Give the memory_address assigned to the memory_unit
+   *)
   let add_link_name_object (mem : 'a memory ref) (n : name) (mem_u : 'a) : memory_address =
     let mem_a = add_object mem mem_u in
     add_link_name_address mem n mem_a;
     mem_a
 
   (***** Memory factory ***********************************)
-  (*
-  Give a reference to a new empty memory
-  *)
+  (**
+   * Give a reference to a new empty memory
+   *)
   let make_memory () : 'a memory ref =
     ref {
       names = [Hashtbl.create 10];
@@ -189,9 +187,9 @@ end = struct
       gc_infos = { old_pop = 0 };
     }
 
-  (*
-  Give a reference to a memory empiled over the given one
-  *)
+  (**
+   * Give a reference to a memory empiled over the given one
+   *)
   let make_empiled_memory (mem : 'a memory ref) : 'a memory ref =
     ref {
       names = (Hashtbl.create 10)::(!mem.names);
@@ -214,10 +212,18 @@ end = struct
       gc_infos = !mem.gc_infos;
     }
 
+  (**
+   * Create a unamed variable, used for the garbage collector
+   *)
   let save_temp_var (mem : 'a memory ref) (addr : memory_address) : unit =
-    (List.hd (!mem).current_expr).urs <- (addr :: (List.hd (!mem).current_expr).urs)
+    (List.hd !mem.current_expr).urs <- (addr :: (List.hd !mem.current_expr).urs)
 
   (***** Memory tools *************************************)
+  (**
+   * Pause the program execution and hint the garbage collector to be called
+   * on the memory [mem], if the flag [force] is active, the garbage collector
+   * will be called in any case.
+   *)
   let apply_garbage_collector (mem : 'a memory ref) (force : bool) (f : 'a memory ref -> 'a -> (memory_address, bool) Hashtbl.t -> unit) : unit =
     if (Hashtbl.length (!mem).data) < 2 * (!mem).gc_infos.old_pop && (not force) then
       ()

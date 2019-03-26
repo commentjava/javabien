@@ -9,9 +9,9 @@ exception CannotFindSymbol of string;;
 (** Resolve in memory a fqn of the form `parentclass.classname.method` *)
 let resolve_fqn mem (fqn : string list) : Memory.memory_address =
   let obj_name = List.hd fqn in
-  let obj_addr =try
+  let obj_addr = try
     Memory.get_address_from_name mem obj_name
-  with Not_found -> raise (CannotFindSymbol ("Cannot find symbol " ^ obj_name)) in
+  with Not_found -> raise (CannotFindSymbol ("Cannot find symbol `" ^ obj_name ^ "`")) in
   List.fold_left
     (fun obj_id name ->
       match (Memory.get_object_from_address mem obj_addr) with
@@ -20,10 +20,12 @@ let resolve_fqn mem (fqn : string list) : Memory.memory_address =
           Hashtbl.find cl.methods name
         with Not_found -> (Hashtbl.find cl.attributes name).v
       );
-      | Object o -> raise (NotImplemented "Resolution not Implemented");
       | Null -> raise (NullException (name ^ " is undefined"));
       | Method _ -> raise (MemoryError ("Could not resolve " ^ name));
-      | _ -> -1
+      | Object _ -> raise (NotImplemented ("Resolution not Implemented for `Object`"));
+      | Primitive _ -> raise (NotImplemented ("Resolution not Implemented for `Primitive`"));
+      | Array _ -> raise (NotImplemented ("Resolution not Implemented for `Array`"));
+      | NativeMethod _ -> raise (NotImplemented ("Resolution not Implemented for `NativeMethod`"));
     )
     obj_addr
     (List.tl fqn)
@@ -153,28 +155,6 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     | AST.Expr e -> execute_expression_GC mem e; Void
     | _ -> raise(NotImplemented "Statement not Implemented")
 
-  and create_java_string mem (str : string) : Memory.memory_address =
-    let str_cl_addr = Memory.get_address_from_name mem "String" in
-    let str_cl = get_class_from_address mem str_cl_addr in
-    let str_obj = (Object{
-      t = str_cl_addr;
-      attributes = copy_non_static_attrs mem str_cl;
-    }) in
-    let explode str =
-      let rec exp i l =
-        if i < 0 then l else exp (i - 1) (str.[i] :: l) in
-      exp (String.length str - 1) [] in
-    let s = Str.global_replace (Str.regexp "\\\\n") (String.make 1 '\n') str in
-    let str_c = String.length s in
-
-    let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
-    (explode s) in
-    let str_c_mem = Memory.add_object mem (Primitive(Int(str_c))) in
-    let str_mem = create_array mem str_v in
-    set_attribute_value_address mem str_obj "value" str_mem;
-    set_attribute_value_address mem str_obj "count" str_c_mem;
-    Memory.add_object mem str_obj
-
   (** Execute an expression in memory and call the garbage collector *)
   and execute_expression_GC mem (expr : AST.expression) : Memory.memory_address =
     let addr = execute_expression mem expr in
@@ -214,20 +194,18 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
           | _ -> raise (NotImplemented "EmptyArray not implemented for this type")
         in
         let rec makeList elt n res =
-          if n <= 0 then
-            res
-          else
-            makeList elt (n - 1) (elt::res)
-        in
+          match n <= 0 with
+          | true -> res
+          | false -> makeList elt (n - 1) (elt::res) in
         let rec build_array sizes_addr =
-          let first_size =
+          let first_dim_size =
             match Memory.get_object_from_address mem (List.hd sizes_addr) with
             | Primitive(Int(i)) -> i
-            | _ -> 0 (* TODO : raise an error *)
+            | _ -> raise (NotImplemented ("Type conversion to int is not implemented"))
           in
           match List.tl sizes_addr with
-          | [] -> create_array mem (makeList empty_value_addr first_size [])
-          | tl -> create_array mem (makeList (build_array tl) first_size [])
+          | [] -> create_array mem (makeList empty_value_addr first_dim_size [])
+          | tl -> create_array mem (makeList (build_array tl) first_dim_size [])
         in
         let sizes_addr = List.map (execute_expression_GC mem) sizes in
         build_array sizes_addr
@@ -236,10 +214,10 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     | AST.Call (obj_name, method_name, args) ->
       begin
         let obj_addr = match obj_name with
-        | Some(addr) -> execute_expression_GC mem addr
-        | None -> Memory.get_address_from_name mem java_this in
+        | Some(addr) -> execute_expression_GC mem addr (* other object method call *)
+        | None -> Memory.get_address_from_name mem java_this (* this method call *) in
         let obj = Memory.get_object_from_address mem obj_addr in
-        let args_addr = List.map (fun e -> execute_expression_GC mem e) args in
+        let args_addr = List.map (execute_expression_GC mem) args in
         let method_addr = get_method_address mem obj method_name in
         match execute_method mem obj_addr method_addr args_addr with
         | Void -> java_void
@@ -273,7 +251,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       begin
         try
         Memory.get_address_from_name mem n
-        with Not_found -> print_memory mem; raise (MemoryError ("Name " ^ n ^ " not found in scope"))
+        with Not_found -> print_memory mem; raise (MemoryError ("Name `" ^ n ^ "` not found in scope"))
       end
     | AST.ArrayInit (values) ->
         create_array mem (List.map (execute_expression_GC mem) values)
@@ -284,7 +262,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
             let hd_addr = execute_expression_GC mem hd in
             let hd_value = match Memory.get_object_from_address mem hd_addr with
             | Primitive (Int(p)) -> p;
-            | _ -> raise (IndexError "Unkown index") in
+            | _ -> raise (IndexError "Array indexes must be integer") in
             match Memory.get_object_from_address mem obj_addr with
             | Array (a) -> fetch_obj a.values.(hd_value) tl;
             | _ -> raise (IndexError "Unkown index");
@@ -376,7 +354,8 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     | Primitive(p1), Primitive(p2), AST.Op_mul -> mul_primitives mem (p1, p2)
     | Primitive(p1), Primitive(p2), AST.Op_div -> div_primitives mem (p1, p2)
     | Primitive(p1), Primitive(p2), AST.Op_mod -> mod_primitives mem (p1, p2)
-  (** Redirect the result of the given expression to the given memory_address *)
+
+  (** Redirect (write) the result of the given expression to the given memory_address *)
   and redirect_expression mem (e1 : AST.expression) (op : AST.assign_op) (e2_addr : Memory.memory_address) (return_old_val : bool) : Memory.memory_address =
     match e1.edesc with
     (* | New of string option * string list * expression list *)
@@ -417,7 +396,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
           let hd_addr = execute_expression_GC mem hd in
           let hd_value = match Memory.get_object_from_address mem hd_addr with
           | Primitive (Int(p)) -> p;
-          | _ -> raise (IndexError "Unkown index") in
+          | _ -> raise (IndexError "Index must be of type integer") in
           let a = get_arr_or_raise obj_addr in
           fetch_prev_obj obj_addr a.(hd_value) hd_value tl;
         ) in
@@ -435,7 +414,7 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     (* | AST.ClassOf *)
     (* | AST.InstanceOf *)
     (* | AST.VoidClass *)
-    | _ -> raise(NotImplemented "Redirect Expression not Implemented")
+    | a -> raise(NotImplemented ("Redirect Expression `" ^ (AST.string_of_expression_desc a) ^ "` not Implemented"))
 
   (** Declare a new Java type. Only java Classes are implemented *)
   and declare_type mem natives (t : AST.asttype) : unit =
@@ -456,19 +435,20 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
   and declare_attr mem (class_addr : Memory.memory_address) (a : AST.astattribute) : unit =
     let attr_addr = match a.adefault with
     | None -> java_void
-    | Some(expr) -> execute_expression_GC mem expr in (* TODO execute now only for static, otherwise execute at object instantiation *)
+    | Some(expr) -> execute_expression_GC mem expr in (* TODO execute only for static attrs once the class is finnalized, otherwise execute at object instantiation *)
     let cl = get_class_from_address mem class_addr in
     Hashtbl.add cl.attributes a.aname {
       v = attr_addr;
       modifiers = a.amodifiers;
     }
 
-  (** Create a new constructor *)
+  (** Create a new class constructor *)
   and declare_constructor mem (m : AST.astconst) : Memory.memory_address =
       Memory.add_object mem (Method{
         body = m.cbody;
         arguments = m.cargstype;
       })
+
   (** Create a new method for the class located at `class_addr` *)
   and declare_method mem natives (class_addr : Memory.memory_address) (m : AST.astmethod) : unit =
     let cl = get_class_from_address mem class_addr in
@@ -493,13 +473,16 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     [create_array mem (List.map (fun a -> Natives.create_java_string mem a) args)]
     in
 
+  (* ----------- *)
+  (* Let's Rock! *)
+  (* ----------- *)
+
   let natives = Natives.init_natives debug in
   let mem = make_populated_memory () in
 
   (* load additionnal types (e.g. stdlib) *)
   List.iter (
     fun (prog : AST.t) -> (List.iter (declare_type mem natives) prog.type_list)
-    (* fun (prog : AST.t) -> (AST.print_AST prog) *)
     )
   additional_asts;
   apply_garbage_collector mem true;
