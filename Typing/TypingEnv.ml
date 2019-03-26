@@ -404,9 +404,75 @@ let rec get_elt_of_enclosed_class enclosing_class (elt: string) (qualified_name:
   )
 ;;
 
-let check_method_args (params: Type.t list) (actual_args: Type.t list) (check_parent: bool) =
+(* 5.1.2 *)
+(* This function should be located with other conversion functions *)
+(* from t1 to t2 *)
+let widening_primitive_conversion (t1: Type.primitive) (t2: Type.primitive) =
+  (*
+    byte to short, int, long, float, or double
+    short to int, long, float, or double
+    char to int, long, float, or double
+    int to long, float, or double
+    long to float or double
+    float to double
+  *)
+  match t1 with
+  | Byte -> (
+    match t2 with
+    | Boolean -> t1
+    | Char -> t1
+    | _ -> t2
+  )
+  | Short -> (
+    match t2 with
+    | Boolean -> t1
+    | Char -> t1
+    | Byte -> t1
+    | _ -> t2
+  )
+  | Char -> (
+    match t2 with
+    | Boolean -> t1
+    | Short -> t1
+    | Byte -> t1
+    | _ -> t2
+  )
+  | Int -> (
+    match t2 with
+    | Long -> t2
+    | Float -> t2
+    | Double -> t2
+    | _ -> t1
+  )
+  | Long -> (
+    match t2 with
+    | Float -> t2
+    | Double -> t2
+    | _ -> t1
+  )
+  | Float -> (
+    match t2 with
+    | Double -> t2
+    | _ -> t1
+  )
+  | _ -> t1
+;;
+
+let rec check_method_args (params: Type.t list) (actual_args: Type.t list) (check_parent: bool) (apply_conversion: bool) =
   let check_arg (t1: Type.t) (t2: Type.t) =
-    if t1 = t2 then true else
+    let t1_conv = match apply_conversion with
+    | true -> (
+        match t1 with
+        | Type.Primitive(tp1) -> (
+          match t2 with
+          | Type.Primitive(tp2) -> Type.Primitive(widening_primitive_conversion tp1 tp2);
+          | _ -> t1
+        )
+        | _ -> t1
+      )
+    | false -> t1
+    in
+    if t1_conv = t2 then true else
       if check_parent then (
         (* TODO actual check for parents *)
         match t2 with
@@ -422,7 +488,9 @@ let check_method_args (params: Type.t list) (actual_args: Type.t list) (check_pa
   in
   try (
     let matching_args = List.map2 check_arg params actual_args in
-    if (List.mem false matching_args) then false else true
+    match (List.mem false matching_args) with
+    | true -> if not apply_conversion then check_method_args params actual_args check_parent true else false
+    | _ -> true
   ) with Invalid_argument(s) -> false
 ;;
 
@@ -434,12 +502,12 @@ let check_constructor_exist (env: tc_env) (c_type: Type.t) (params: Type.t list)
       match clist with
       | [] -> raise(TypeExcept.CannotFindSymbol(r.tid))
       | [c] -> (
-        let matching_args = check_method_args params c.args.types check_parent in
+        let matching_args = check_method_args params c.args.types check_parent false in
         if matching_args then c_type
         else raise(TypeExcept.WrongConstructorArguments(r.tid, params))
       )
       | h::t -> (
-        let matching_args = check_method_args params h.args.types check_parent in
+        let matching_args = check_method_args params h.args.types check_parent false in
         if matching_args then c_type else check_constructors t check_parent
       )
     in
@@ -469,12 +537,12 @@ let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (par
     match mlist with
     | [] -> raise(TypeExcept.CannotFindSymbol(mname))
     | [m] -> (
-      let matching_args = check_method_args params m.args.types check_parent in
+      let matching_args = check_method_args params m.args.types check_parent false in
       if matching_args then m.return_type
       else raise(TypeExcept.WrongMethodArguments(mname, params, m.args.types))
     )
     | h::t -> (
-      let matching_args = check_method_args params h.args.types check_parent in
+      let matching_args = check_method_args params h.args.types check_parent false in
       if matching_args then h.return_type else check_methods t check_parent
     )
   in
