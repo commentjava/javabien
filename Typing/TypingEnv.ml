@@ -541,10 +541,10 @@ let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (par
     match mlist with
     | [] -> (
       (* retry and look for methods in parents *)
-      if Env.mem env.classes_env env.current_class then (
+      try (
         let class_ = Env.find env.classes_env env.current_class in
-        function_return_type env class_.parent mname params
-      ) else raise(TypeExcept.CannotFindSymbol(mname))
+          function_return_type env class_.parent mname params
+      ) with _ -> raise(TypeExcept.CannotFindSymbol(mname))
     )
     | [m] -> (
       let matching_args = check_method_args params m.args.types check_parent false in
@@ -574,24 +574,42 @@ let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (par
   | _ -> raise(TypeExcept.WrongType "Only reference types have methods")
 ;;
 
-let class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
+let rec class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
   match c_type with
   | Ref(r) -> (
     try (
       match r.tpath@[r.tid]@[attr_name] with
       | h::t -> (
         let class_ = Env.find env.classes_env h in
-        let elt = get_elt_of_enclosed_class class_ "attr" t in
-        match elt with
-        | Attr(a) -> a.atype
-        (* Attr could be a enclosed type *)
-        | Type(c) -> Type.Ref({tpath = r.tpath@[r.tid] ; tid = attr_name})
+        try (
+          let elt = get_elt_of_enclosed_class class_ "attr" t in
+          match elt with
+          | Attr(a) -> a.atype
+          (* Attr could be a enclosed type *)
+          | Type(c) -> Type.Ref({tpath = r.tpath@[r.tid] ; tid = attr_name})
+        ) with TypeExcept.CannotFindSymbol(s) -> (
+          try (
+            let class_ = Env.find env.classes_env env.current_class in
+              class_attr_type env class_.parent attr_name
+          ) with _ -> raise(TypeExcept.CannotFindSymbol(attr_name))
+        )
       )
     ) with Not_found -> raise(TypeExcept.CannotFindSymbol(r.tid))
   )
   | Array(t, l) -> if attr_name = "length" then Primitive(Type.Int)
     else raise(Failure "only length attribute is implemented for arrays")
   | _ -> raise(TypeExcept.WrongType "Can't access an attribute if it's not a reference type")
+;;
+
+(* Find a class in classes_env from a Ref type *)
+let rec get_class_from_ref (env: classes_env) (ref_: Type.t) =
+  match ref_ with
+  | Ref r ->
+    match r.tpath with
+    | [] -> Env.find env r.tid
+    | h::t -> (
+    get_class_from_ref (Env.find env h).types (Type.Ref({ tpath = t; tid = r.tid; }))
+  )
 ;;
 
 (*******  Exec Env  ********)
@@ -612,7 +630,29 @@ let add_variable (env: tc_env) (varname: string) (vartype: Type.t) =
 ;;
 
 (*******  TC Env  ********)
+
 let get_var_type (env: tc_env) (varname: string) =
+  let rec get_var_type_from_class (class_: javaclass) =
+    if Env.mem class_.attributes varname then (
+      let attr = Env.find class_.attributes varname in
+      attr.atype
+    ) else if Env.mem class_.types varname then (
+      let type_ = Env.find class_.types varname in
+      Type.Ref({tpath = [env.current_class] ; tid = varname})
+    ) else if Env.mem env.classes_env varname then (
+      let type_ = Env.find env.classes_env varname in
+      (* TODO: check accessibility *)
+      Type.Ref({tpath = [] ; tid = varname})
+    ) else if varname = "this" then (
+      Type.Ref({tpath = [] ; tid = env.current_class})
+    ) else (
+      (* check in parent *)
+      match class_.parent with
+      (* No parent for Object *)
+      | Ref(r) -> if r.tid <> "" && r.tid <> "Object" then get_var_type_from_class (get_class_from_ref env.classes_env class_.parent) else raise(TypeExcept.CannotFindSymbol(varname))
+      | _ -> raise(TypeExcept.CannotFindSymbol(varname))
+    )
+  in
   try
     Env.find env.exec_env varname
   with Not_found -> (
@@ -624,19 +664,7 @@ let get_var_type (env: tc_env) (varname: string) =
           * TODO : look in inherited class for attribute/type
           * look in same package for type (here classes_env)
       *)
-      if Env.mem current_javaclass.attributes varname then (
-        let attr = Env.find current_javaclass.attributes varname in
-        attr.atype
-      ) else if Env.mem current_javaclass.types varname then (
-        let type_ = Env.find current_javaclass.types varname in
-        Type.Ref({tpath = [env.current_class] ; tid = varname})
-      ) else if Env.mem env.classes_env varname then (
-        let type_ = Env.find env.classes_env varname in
-        (* TODO: check accessibility *)
-        Type.Ref({tpath = [] ; tid = varname})
-      ) else if varname = "this" then (
-        Type.Ref({tpath = [] ; tid = env.current_class})
-      ) else raise(TypeExcept.CannotFindSymbol(varname))
+      get_var_type_from_class current_javaclass
     ) with Not_found -> raise(TypeExcept.CannotFindSymbol(env.current_class))
   )
 ;;
