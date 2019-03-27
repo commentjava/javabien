@@ -135,7 +135,13 @@ class Math {
 
   // static float min(float a, floatb)
 
-  // static int min(int a, int b)
+  static int min(int a, int b) {
+          if (a < b) {
+                  return a;
+          } else {
+                  return b;
+          }
+  }
 
   // static long min(long a, long b)
 

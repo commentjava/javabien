@@ -36,6 +36,7 @@ let sub_primitives mem = function
   | Int(i1), Float(f2) -> Memory.add_object mem (Primitive(Float((float_of_int i1) -. f2)))
   | Float(f1), Int(i2) -> Memory.add_object mem (Primitive(Float(f1 -. (float_of_int i2))))
   | Float(f1), Float(f2) -> Memory.add_object mem (Primitive(Float(f1 -. f2)));
+  | Char(c1), Char(c2) -> Memory.add_object mem (Primitive(Int(Char.compare c1 c2)));
   | _ -> raise (InvalidOp "Cannot sub those primitives");;
 
 (** Operation to multiply two Primitive types *)
