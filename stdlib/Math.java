@@ -3,34 +3,62 @@ package java.lang;
 
 class Math {
 
-  /** Fields */
+  /** *** Fields *** */
   // public static double E
   // public static double PI
 
-  /** Hidden fialds */
+
+
+  /** *** Hidden fialds *** */
   /** Holds the natural logarithm of the value 2 */
   private static double ln2 = Math.ln_suite(2.0);
 
-  /** Methods */
+
+
+  /** *** Methods *** */
+
   // static double abs(double a)
+
   // static float abs(float a)
+
   // static int abs(int a)
+
   // static long abs(long a)
+
   // static double acos(double a)
+
   // static int addExact(int x, int y)
+
   // static long addExact(long x, long y)
+
   // static double asin(double a)
+
   // static double atan(double a)
+
   // static double atan2(double y, double x)
+
   // static double cbrt(double a)
+
   // static double ceil(double a)
+
   // static double copySign(double magnitude, double sign)
+
   // static float copySign(float magnitude, float sign)
+
   // static double cos(double a)
+
   // static double cosh(double x)
+
   // static int decrementExact(int a)
+
   // static long decrementExact(long a)
-  /** Returns Euler's number e raised to the power of a double value. */
+
+  /**
+   * Returns Euler's number e raised to the power of a double value.
+   *
+   * @param   a   the exponent to raise e to.
+   * @return  the value e^a, where e is the base of the natural logarithms.
+   */
   static double exp(double a){
     if(Double.isNaN(a)){ return Double.NaN; }
     if(a == Double.POSITIVE_INFINITY){ return Double.POSITIVE_INFINITY; }
@@ -47,19 +75,37 @@ class Math {
     }
     return res;
   }
+
   // static double expm1(double x)
+
   // static double floor(double a)
+
   // static int floorDiv(int x, int y)
+
   // static long floorDiv(long x, long y)
+
   // static int floorMod(int x, int y)
+
   // static long floorMod(long x, long y)
+
   // static int getExponent(double d)
+
   // static int getExponent(float f)
+
   // static double hypot(double x, double y)
+
   // static double IEEEremainder(double f1, double f2)
+
   // static int incrementExact(int a)
+
   // static long incrementExact(long a)
-  /** Returns the natural logarithm (base e) of a double value. */
+
+  /**
+   * Returns the natural logarithm (base e) of a double value.
+   *
+   * @param   a   a value.
+   * @return  the value ln a, the natural logarithm of a.
+   */
   static double log(double a){
     if(Double.isNaN(a) || a < 0){ return Double.NaN; }
     if(Double .isInfinite(a)){ return Double.POSITIVE_INFINITY; }
@@ -72,49 +118,92 @@ class Math {
     }
     return p * Math.ln2 + Math.ln_suite(b);
   }
+
   // static double log10(double a)
+
   // static double log1p(double x)
+
   // static double max(double a, double b)
+
   // static float max(float a, float b)
+
   // static int max(int a, int b)
+
   // static long max(long a, long b)
+
   // static double min(double a, double b)
+
   // static float min(float a, floatb)
+
   // static int min(int a, int b)
+
   // static long min(long a, long b)
+
   // static int multiplyExact(int x, int y)
+
   // static long multiplyExact(long x, long y)
+
   // static int negateExact(int a)
+
   // static long negateExact(long a)
+
   // static double nextAfter(double start, double direction)
+
   // static float nextAfter(float start, float direction)
+
   // static double nextDown(double d)
+
   // static float nextDown(float f)
+
   // static double nextUp(double d)
+
   // static float nextUp(float f)
+
   // static double pow(double a, double b)
+
   // static double random()
+
   // static double rint(double a)
+
   // static long round(double a)
+
   // static int round(float a)
+
   // static double scalb(double d, int scaleFactor)
+
   // static float scalb(float f, int scaleFactor)
+
   // static double signum(double d)
+
   // static float signum(float f)
+
   // static double sin(double a)
+
   // static double sinh(double a)
+
   // static double sqrt(double a)
+
   // static int subtractExact(int x, int y)
+
   // static long subtractExact(long x, long y)
+
   // static double tan(double a)
+
   // static double tanh(double x)
+
   // static double toDegrees(double angrad)
+
   // static int toIntExact(long value)
+
   // static double toRadian(double angdeg)
+
   // static double ulp(double d)
+
   // static float ulp(float f)
 
-  /** Hidden methods */
+
+
+  /** *** Hidden methods *** */
 
   /** Auxiliary function for 'static double Math.log(double a)'
     * Computes the natural logarithm of d using the suite decomposition

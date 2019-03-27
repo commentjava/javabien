@@ -47,7 +47,12 @@ class Double{
 
   /** *** Constructors *** */
 
-  /** Constructs a newly allocated Double object that represents the primitive double argument. */
+  /**
+   * Constructs a newly allocated Double object that represents the primitive
+   * double argument.
+   *
+   * @param value the value to be represented by the Double.
+   */
   public Double(double d){
     this.value = d;
   }
@@ -60,7 +65,15 @@ class Double{
 
   // public byte byteValue()
 
-  /** Compares the two specified double values. */
+  /**
+   * Compares the two specified double values.
+   *
+   * @param   d1  the first double to compare.
+   * @param   d2  the second double to compare.
+   * @return  the value 0 if d1 is numerically equal to d2;
+   *          a value less than 0 if d1 is numerically less than d2;
+   *          and a value greater than 0 if d1 is numerically greater than d2.
+   */
   public static int compare(double d1, double d2){
     if(Double.isNaN(d1) && Double.isNaN(d2)){ return 0; }
     else if(Double.isNaN(d1)) { return 1; }
@@ -70,7 +83,16 @@ class Double{
     else { return -1; }
   }
 
-  /** Compares two Double objects numerically. */
+  /**
+   * Compares two Double objects numerically.
+   *
+   * @param   anotherDouble   the Double to be compared.
+   * @return  the value 0 if anotherDouble is numerically equal to this Double;
+   *          a value less than 0 if this Double is numerically less
+   *          than anotherDouble;
+   *          and a value greater than 0 if this Double is numerically
+   *          greater than anotherDouble.
+   */
   public int compareTo(Double anotherDouble){
     return Double.compare(this.value, anotherDouble.doubleValue());
   }
@@ -79,14 +101,23 @@ class Double{
 
   // public static long doubleToRawLongBits(double d)
 
-  /** Returns the double value of this Double object. */
+  /**
+   * Returns the double value of this Double object.
+   *
+   * @return the double value represented by this object.
+   */
   public double doubleValue(){
     return this.value;
   }
 
   // public boolean equals(Object obj)
 
-  /** Returns the value of this Double as a float after a narrowing primitive conversion. */
+  /**
+   * Returns the value of this Double as a float after a narrowing primitive
+   * conversion.
+   *
+   * @return the double value represented by this object converted to type float.
+   */
   public float floatValue(){
     return this.value;
   }
@@ -95,38 +126,75 @@ class Double{
 
   // public static int hashCode(double d)
 
-  /** Returns the value of this Double as an int after a narrowing primitive conversion. */
+  /**
+   * Returns the value of this Double as an int after a narrowing primitive
+   * conversion.
+   *
+   * @return the double value represented by this object converted to type int.
+   */
   public int intValue(){
     return Double._intValue(this.value);
   }
 
-  /** Returns true if the argument is a finite floating-point value; returns false otherwise (for NaN and infinity arguments). */
+  /**
+   * Returns true if the argument is a finite floating-point value;
+   * returns false otherwise (for NaN and infinity arguments).
+   *
+   * @param   d   the double value to be tested.
+   * @return  true if the argument is a finite floating-point value,
+              false otherwise.
+   */
   public static boolean isFinite(double d){
     return !(Double._isInfinite(d));
   }
 
   // public boolean isInfinite() // Not possible due to overload
 
-  /** Returns true if the specified number is infinitely large in magnitude, false otherwise. */
+  /**
+   * Returns true if the specified number is infinitely large in magnitude,
+   * false otherwise.
+   *
+   * @param   v   the value to be tested.
+   * @return  true if the value of the argument is positive infinity or
+   *          negative infinity; false otherwise.
+   */
   public static boolean isInfinite(double d){
     return Double._isInfinite(d);
   }
 
   // public boolean isNaN() // Not possible due to overload
 
-  /** Returns true if the specified number is a Not-a-Number (NaN) value, false otherwise. */
+  /**
+   * Returns true if the specified number is a Not-a-Number (NaN) value,
+   * false otherwise.
+   *
+   * @param   v   the value to be tested.
+   * @return  true if the value of the argument is NaN; false otherwise.
+   */
   public static boolean isNaN(double d){
     return Double._isNaN(d);
   }
 
   // public static double longBitsToDouble(long l)
 
-  /** Returns the value of this Double as a long after a narrowing primitive conversion. */
+  /**
+   * Returns the value of this Double as a long after a narrowing primitive
+   * conversion.
+   *
+   * @return  the double value represented by this object converted to type
+   *          long.
+   */
   public long longValue(){
     return Double._intValue(this.value);
   }
 
-  /** Returns the greater of two double values as if by calling Math.max. */ // TODO
+  /**
+   * Returns the greater of two double values as if by calling Math.max.
+   *
+   * @param   a   the first operand.
+   * @param   b   the second operand.
+   * @return  the greater of a and b.
+   */ // TODO
   public static double max(double d1, double d2){
     if(d1 > d2){
       return d1;
@@ -136,7 +204,13 @@ class Double{
     }
   }
 
-  /** Returns the smaller of two double values as if by calling Math.min. */ // TODO
+  /**
+   * Returns the smaller of two double values as if by calling Math.min.
+   *
+   * @param   a   the first operand.
+   * @param   b   the second operand.
+   * @return  the smaller of a and b.
+   */ // TODO
   public static double min(double d1, double d2){
     if(d1 > d2){
       return d2;
@@ -150,7 +224,13 @@ class Double{
 
   // public short shortValue()
 
-  /** Adds two double values together as per the + operator. */
+  /**
+   * Adds two double values together as per the + operator.
+   *
+   * @param   a   the first operand.
+   * @param   b   the second operand.
+   * @return  the sum of a and b.
+   */
   public static double sum(double d1, double d2){
     return d1 + d2;
   }
@@ -159,6 +239,12 @@ class Double{
 
   // public String toString()
 
+  /**
+   * Returns a string representation of the double argument.
+   *
+   * @param   d   the double to be converted.
+   * @return  a string representation of the argument.
+   */
   public static String toString(double d){
     if(Double._isNaN(d)){ return "NaN"; }
     String res = "";
@@ -207,7 +293,12 @@ class Double{
     return res;
   }
 
-  /** Returns a Double instance representing the specified double value. */
+  /**
+   * Returns a Double instance representing the specified double value.
+   *
+   * @param   d   a double value.
+   * @return  a Double instance representing d.
+   */
   public static Double valueOf(double d){
     return new Double(d);
   }
