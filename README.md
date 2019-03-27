@@ -42,12 +42,30 @@ Build the Main binary:
 make
 ```
 
-Some toy programs are available under the `Test/programs/` folder they should
-all run with the Javabien compiler, but not necessary with javac compiler.
+Some toy programs are available under the [Test/programs/](Test/programs/)
+folder they should all run with the Javabien compiler, but not necessary with
+javac compiler.
 
 ```bash
-Main.byte Test/programs/Stack.java
+# HelloWorld
+./Main.byte Test/programs/HelloWorld.java
+
+# Implementation of a stack using a linked list:
+./Main.byte Test/programs/Stack.java
+
+# Program that does a linear regression on a given method:
+./Main.byte Test/programs/LinearRegression.java
+
+# Reimplementation of the `cat` gnu util:
+./Main.byte Test/programs/Cat.java README.md Makefile
+
+# Simple HttpServer that serves the content of a folder
+./Main.byte Test/programs/HttpServer.java 8000 ~/mywebsite
+
+# See Test/programs/ for the full list
 ```
+
+## Tests
 
 Run crafted test suite:
 ```bash
@@ -132,17 +150,29 @@ parts of the memory.
 
 When starting a program, the interpreter will load into memory an environement
 of existing classes. Thoses classes are described in the  `stdlib/` folder.
-They try to follow the jdk classes, but are nowhere as complete as the jdk.
+We tried to follow the jdk classes, but they are nowhere as complete as the
+jdk.
 
 In order to handle such classes we have implemented the Java method modifier:
 `native`. When a `native` method is met, the interpreter will search in an
 Hashtbl if the method is not referenced in Ocaml.
 
 One example of Class with native methods is the `Debug` class which is used to
-debug the interpreter. The static java method `Debug.dumpMemory()` will print the
-state of the program memory in place. The static java method `Debug.debug(var)`
-will print a java name as it is seen in  memory. Both methods can be used
-anywhere in a program.
+debug the interpreter. The static java method `Debug.dumpMemory()` will print
+the state of the program memory in place. The static java method
+`Debug.debug(var)` will print a java name as it is seen in memory. Both methods
+can be used anywhere in a program.
+
+### Typing tests
+
+There is two receipes dediacated to the typing suite:
+* `make test-ShouldWorkTypeTest.byte`: this suite will try to type the files
+  located in the `Test/typing/should_work` folder and verify that every files
+  here are correctly typed.
+* `make test-ShouldFailTypeTest.byte`: this suite will try to type the files
+  located in the `Test/typing/should_fail` folder and  check that each file
+  fail the typing phase, however it will not check _why_ the test failed.
+
 
 ### Evaluation tests
 
@@ -182,22 +212,26 @@ To launch a specific unit test, the `main-class` argument can be used:
 ```
 
 
-## TODO list
+## Features implemented
+
+Here are the lists of features that we planned and/or implemented. We do not
+aim to implement them all but this list works well as a TODO list of features
+we might want to integrate in JavaBien.
 
 ### AST evaluation
 
 #### Primitives
-* [ ] Primitives types
+* [x] Primitives types
   * [x] int
   * [x] bool
-  * [ ] float
-  * [ ] Double
+  * [x] float
+  * [x] double
   * [x] Char
   * [x] String
 * [x] Simple arithmetic operations
 * [x] Simple logic operations
-* [ ] Postfix operations
-* [ ] Prefix operations
+* [x] Postfix operations
+* [x] Prefix operations
 * [x] Variable declaration
 * [x] Variable assignation (only `Assign`)
 * [x] null element
@@ -219,12 +253,13 @@ To launch a specific unit test, the `main-class` argument can be used:
 * [ ] Inheritance
 * [x] Native Method declaration
 * [x] Custom class constructor
+* [ ] Subclasses
 
 #### Control flow
 * [x] If, else if, else
 * [x] Block
 * [x] while loop
-* [ ] For loop
+* [x] For loop
 * [x] Method call
 * [x] Method return
 * [ ] Method overload
@@ -233,22 +268,28 @@ To launch a specific unit test, the `main-class` argument can be used:
 #### Memory
 * [x] Simple memory heap
 * [x] Simple memory stack
-* [ ] Unamed pointers
-* [ ] Garbage collection
+* [x] Unamed pointers
+* [x] Garbage collection
+
+#### System
+* [x] File open, read, write
+* [x] Socket create, bind, accept, read, write
 
 #### Other
 * [x] Inline printing
 * [x] Inline memory dump
-* [ ] Program arguments
-* [ ] Simple STD
+* [x] Program arguments
+* [x] Simple STD
 * [ ] Threads and multithreading control
 * [ ] Imports
+* [ ] Informative errors
 
 
-## Parser errors
+## Parse bugs and corrections
 
-We have notice some errors in the builded AST, they are listed and sometime
-fixed here:
+We have notice some errors in the builded AST, they are listed below and are
+fixed when we needed. Some patches might be merged back upstream for next
+years.
 
 - b = true && true; (also <= < > >=)
 This doesn't respect operators precedence.
@@ -317,5 +358,5 @@ arr = new int[2][][4]{3, 4};
 arr = {3,4}.int[2][][4];
 ```
 
-- ~~Char literal are not parsed correctly~~ Fixed in ?????
+- ~~Char literal are not parsed correctly~~ Fixed in 5475cacae3030bd5bc3c96b0b3387fb2038f475a (not fixed: escaped chars like `\n`)
 
