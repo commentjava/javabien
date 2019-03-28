@@ -348,11 +348,12 @@ let rec check_statement env (statement: AST.statement) =
     )
     | _ -> raise(TypeExcept.WrongType "Expected a boolean in if")
   in
-  let check_statement_while env condition while_statement =
-    let condition_type = unboxing_conversion (check_expression env condition)
+  let check_statement_while (env: TypingEnv.tc_env) condition while_statement =
+    let while_env = TypingEnv.copy_tc_env env in
+    let condition_type = unboxing_conversion (check_expression while_env condition)
     in
     match condition_type with
-    | Type.Boolean -> check_statement env while_statement;
+    | Type.Boolean -> check_statement while_env while_statement; env
     | _ -> raise(TypeExcept.WrongType "Expected a boolean in while")
   in
   match statement with

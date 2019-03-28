@@ -669,6 +669,14 @@ let get_var_type (env: tc_env) (varname: string) =
   )
 ;;
 
+let copy_tc_env (env: tc_env) =
+  {
+    classes_env = Env.copy env.classes_env;
+    exec_env = Env.copy env.exec_env;
+    current_class = env.current_class;
+    current_method = env.current_method
+  }
+
 let create_env (ast: AST.t) (std_asts: AST.t list) =
   let classes_env = create_classes_env ast std_asts in
   {
