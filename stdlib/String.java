@@ -19,7 +19,9 @@ class String {
     public String(char[] c) {
         this.value = c;
         this.count = c.length;
+        this.offset = 0;
     }
+
     public char[] toCharArray() {
             return this.value;
     }
@@ -135,10 +137,10 @@ class String {
      *             string.
      */
     public char charAt(int index) {
-	    if ((index < 0) || (index >= this.count)) {
-		    // TODO: throw new StringIndexOutOfBoundsException(index);
-	    }
-	    return this.value[index];
+        if ((index < 0) || (index >= count)) {
+            // TODO: throw new StringIndexOutOfBoundsException(index);
+        }
+        return value[index + offset];
     }
 
     /**
@@ -147,24 +149,23 @@ class String {
      * <code>null</code> and is a <code>String</code> object that represents
      * the same sequence of characters as this object.
      *
-     * @param   anObject   the object to compare this <code>String</code>
+     * @param   anotherString   the object to compare this <code>String</code>
      *                     against.
      * @return  <code>true</code> if the <code>String </code>are equal;
      *          <code>false</code> otherwise.
      * @see     java.lang.String#compareTo(java.lang.String)
      * @see     java.lang.String#equalsIgnoreCase(java.lang.String)
      */
-    public boolean equals(String anObject) {
-	    if (this == anObject) {
+    public boolean equals(String anotherString) {
+	    if (this == anotherString) {
 		    return true;
 	    }
-            String anotherString = anObject;
-            int n = this.count;
+            int n = count;
             if (n == anotherString.count) {
-                    char v1[] = this.value;
+                    char v1[] = value;
                     char v2[] = anotherString.value;
-                    int i = 0;
-                    int j = 0;
+                    int i = offset;
+                    int j = anotherString.offset;
                     while (n-- != 0) {
                             if (v1[i++] != v2[j++])
                                     return false;

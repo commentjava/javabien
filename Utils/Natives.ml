@@ -34,13 +34,16 @@ let create_java_string mem (str : string) : Memory.memory_address =
     exp (String.length str - 1) [] in
   let s = Str.global_replace (Str.regexp "\\\\n") (String.make 1 '\n') str in
   let str_c = String.length s in
+  let str_o = 0 in
 
   let str_v = List.map (fun c -> Memory.add_object mem (Primitive(Char(c))))
   (explode s) in
   let str_c_mem = Memory.add_object mem (Primitive(Int(str_c))) in
+  let str_o_mem = Memory.add_object mem (Primitive(Int(str_o))) in
   let str_mem = create_array mem str_v in
   set_attribute_value_address mem str_obj "value" str_mem;
   set_attribute_value_address mem str_obj "count" str_c_mem;
+  set_attribute_value_address mem str_obj "offset" str_o_mem;
   Memory.add_object mem str_obj
 
 let init_natives debug =
