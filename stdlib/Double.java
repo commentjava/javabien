@@ -11,7 +11,7 @@ class Double{
 
   private static native final boolean _isNaN(double d);
   private static native final boolean _isInfinite(double d);
-  private static native final boolean _intValue(double d);
+  private static native final int _intValue(double d);
 
 
 

@@ -348,6 +348,13 @@ let rec check_statement env (statement: AST.statement) =
     )
     | _ -> raise(TypeExcept.WrongType "Expected a boolean in if")
   in
+  let check_statement_while env condition while_statement =
+    let condition_type = unboxing_conversion (check_expression env condition)
+    in
+    match condition_type with
+    | Type.Boolean -> check_statement env while_statement;
+    | _ -> raise(TypeExcept.WrongType "Expected a boolean in while")
+  in
   match statement with
   | AST.VarDecl(l) -> (
     List.fold_left (fun env (vartype, varname, varinit) -> (
@@ -359,12 +366,12 @@ let rec check_statement env (statement: AST.statement) =
   )
   | AST.Block(s) -> check_statement_list env s
   | AST.Nop -> env
-  | AST.While(c, s) -> Printf.eprintf "\x1b[0;33mWarning: Statement while not implemented!\x1b[0m\n"; env
+  | AST.While(c, s) -> check_statement_while env c s
   | AST.For(a, e, e2, s) ->  Printf.eprintf "\x1b[0;33mWarning: Statement for not implemented!\x1b[0m\n"; env
   | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s
   | AST.Return(e) -> check_return env e; env
   | AST.Throw(e) -> Printf.eprintf "\x1b[0;33mWarning: Statement throw not implemented!\x1b[0m\n"; env
-  | AST.Try(s, a, s2) -> Printf.eprintf "\x1b[0;33mWarning: Statement try implemented!\x1b[0m\n"; env
+  | AST.Try(s, a, s2) -> Printf.eprintf "\x1b[0;33mWarning: Statement try not implemented!\x1b[0m\n"; env
   | AST.Expr(e) -> check_expression env e; env
 and check_statement_list env (statements: AST.statement list) =
     match statements with
