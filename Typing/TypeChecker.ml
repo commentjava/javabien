@@ -314,6 +314,10 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
   | AST.ClassOf(t) -> raise(Failure "Expression classof not implemented")
   | AST.Instanceof(e, t) -> check_instanceof env (check_expression env e) t (* 15.20.2 *)
   | AST.VoidClass -> Type.Void
+and check_expression_list (env: TypingEnv.tc_env) (exp_list: AST.expression list) =
+  match exp_list with
+  | [] -> env
+  | h::t -> check_expression env h; check_expression_list env t
 ;;
 
 let check_return (env: TypingEnv.tc_env) (expression: AST.expression option) =
@@ -356,6 +360,42 @@ let rec check_statement env (statement: AST.statement) =
     | Type.Boolean -> check_statement while_env while_statement; env
     | _ -> raise(TypeExcept.WrongType "Expected a boolean in while")
   in
+  let check_statement_for (env: TypingEnv.tc_env) init_s condition_e update_exp_list for_statement =
+    let check_init (env: TypingEnv.tc_env) init =
+      match init with
+      | (Some(t), s, Some(e)) -> (
+        let env = TypingEnv.add_variable env s t in
+        check_expression env {edesc = AST.AssignExp({edesc = AST.Type(t)}, AST.Assign, e) };
+        env
+      )
+      | (Some(t), s, None) -> TypingEnv.add_variable env s t
+      | (None, s, Some(e)) -> (
+        let var_type = TypingEnv.get_var_type env s in
+        check_expression env {edesc = AST.AssignExp({edesc = AST.Type(var_type)}, AST.Assign, e) }; env
+      )
+      | (None, s, None) -> raise(Failure("No statement in for init"))
+
+      | _ -> env
+    in
+    let rec check_init_list (env: TypingEnv.tc_env) init_l =
+      match init_l with
+      | [] -> env
+      | h::t -> check_init_list (check_init env h) t
+    in
+    let check_for_statement (env: TypingEnv.tc_env) update_list for_s =
+      check_expression_list env update_list;
+      check_statement env for_s;
+    in
+    let for_env = check_init_list (TypingEnv.copy_tc_env env) init_s in
+    match condition_e with
+    | Some(e) -> (
+      let condition_type = unboxing_conversion (check_expression for_env e) in
+      match condition_type with
+      | Type.Boolean -> check_for_statement for_env update_exp_list for_statement; env
+      | _ -> raise(TypeExcept.WrongType "Expected a boolean in for condition")
+    )
+    | None -> check_for_statement for_env update_exp_list for_statement; env
+  in
   match statement with
   | AST.VarDecl(l) -> (
     List.fold_left (fun env (vartype, varname, varinit) -> (
@@ -368,7 +408,7 @@ let rec check_statement env (statement: AST.statement) =
   | AST.Block(s) -> check_statement_list env s
   | AST.Nop -> env
   | AST.While(c, s) -> check_statement_while env c s
-  | AST.For(a, e, e2, s) ->  Printf.eprintf "\x1b[0;33mWarning: Statement for not implemented!\x1b[0m\n"; env
+  | AST.For(a, e, e2, s) -> check_statement_for env a e e2 s
   | AST.If(cond_e, if_s, else_s) -> check_statement_if env cond_e if_s else_s
   | AST.Return(e) -> check_return env e; env
   | AST.Throw(e) -> Printf.eprintf "\x1b[0;33mWarning: Statement throw not implemented!\x1b[0m\n"; env
