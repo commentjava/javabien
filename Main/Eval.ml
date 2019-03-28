@@ -251,7 +251,11 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
       begin
         try
         Memory.get_address_from_name mem n
-        with Not_found -> print_memory mem; raise (MemoryError ("Name `" ^ n ^ "` not found in scope"))
+        with Not_found -> (* If not found in scope search in object attributes *)
+          begin
+            let this = Memory.get_object_from_name mem "this" in
+            get_attribute_value_address mem this n
+          end
       end
     | AST.ArrayInit (values) ->
         create_array mem (List.map (execute_expression_GC mem) values)
