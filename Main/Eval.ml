@@ -311,7 +311,19 @@ let execute_program (p : AST.t) (additional_asts : AST.t list) (entry_point : st
     (* | AST.Cast *)
     (* | AST.Type *)
     (* | AST.ClassOf *)
-    (* | AST.InstanceOf *)
+    | AST.Instanceof (expr, t) ->
+        begin
+          let expr_addr = execute_expression_GC mem expr in
+          let t_addr = match t with
+          | Void -> raise (MemoryError "unexpected type, required: class or array")
+          | Primitive _ -> raise (MemoryError "unexpected type, required: class or array")
+          | Ref r -> resolve_fqn mem (List.concat [r.tpath; [r.tid]]) in
+          let expr_cl_addr = match Memory.get_object_from_address mem expr_addr with
+          | Object o -> o.t
+          | Array a -> raise (NotImplemented "Array isinstanceof not implemented")
+          | _ -> raise (MemoryError "Only Object and arrays are allowed") in
+          Memory.add_object mem (Primitive(Boolean(expr_cl_addr == t_addr)))
+        end
     (* | AST.VoidClass *)
     | _ -> raise(NotImplemented "Expression not Implemented")
   (** Compute the result of an assign operator on two values *)
