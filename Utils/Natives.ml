@@ -46,6 +46,26 @@ let create_java_string mem (str : string) : Memory.memory_address =
   set_attribute_value_address mem str_obj "offset" str_o_mem;
   Memory.add_object mem str_obj
 
+(* *** utils *** *)
+
+(* function used to get a float from the given name in the memory *)
+let expect_float mem (n : Memory.name) : float option =
+  match Memory.get_object_from_name mem n with
+  | Primitive(Float(f)) -> Some f
+  | Primitive(Int(i)) -> Some (float_of_int i)
+  | _ -> None
+;;
+
+(* function used to return a float *)
+let return_float mem (f : float) : statement_return =
+  Return (Memory.add_object mem (Primitive(Float(f))))
+;;
+
+(* function used to return an int *)
+let return_int mem (i : int) : statement_return =
+  Return (Memory.add_object mem (Primitive(Int(i))))
+;;
+
 let init_natives debug =
   let native_mem_dump (mem : 'a Memory.memory ref) : statement_return =
     print_memory mem; Void
@@ -81,21 +101,101 @@ let init_natives debug =
   (* class Double : returns true if the specified value is a NaN, false otherwise *)
   let native_double_isNaN mem : statement_return =
     match Memory.get_object_from_name mem "d" with
-    | Primitive(Float(f)) -> Return (Memory.add_object mem (Primitive(Boolean(classify_float f == FP_nan))))
-    | _ -> Return (Memory.add_object mem (Primitive(Boolean(false))))
+    | Primitive(Float(f)) when (classify_float f == FP_nan) -> Return java_true
+    | _ -> Return java_false
   in
   (* class Double : returns true if the specified value is an infinite, false otherwise *)
   let native_double_isInfinite mem : statement_return =
     match Memory.get_object_from_name mem "d" with
-    | Primitive(Float(f)) -> Return (Memory.add_object mem (Primitive(Boolean(classify_float f == FP_infinite))))
-    |_ -> Return (Memory.add_object mem (Primitive(Boolean(false))))
+    | Primitive(Float(f)) when (classify_float f == FP_infinite) -> Return java_true
+    |_ -> Return java_false
   in
   (* class Double : returns the specified value as an Int *)
   let native_double_intValue mem : statement_return =
-    match Memory.get_object_from_name mem "d" with
-    | Primitive(Float(f)) -> Return (Memory.add_object mem (Primitive(Int(int_of_float f))))
-    | Primitive(Int(i)) -> Return (Memory.get_address_from_name mem "d")
-    | _ -> Return (Memory.add_object mem (Primitive(Int(0))))
+    match expect_float mem "d" with
+    | Some f -> return_int mem (int_of_float f)
+    | _ -> Return java_0
+  in
+
+  (* class Math : returns the sine of the specified value *)
+  let native_math_sin mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (sin f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the cosine of the specified value *)
+  let native_math_cos mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (cos f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the tangente of the specified value *)
+  let native_math_tan mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (tan f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the arc sine of the specified value *)
+  let native_math_asin mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (asin f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the arc cosine of the specified value *)
+  let native_math_acos mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (acos f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the arc tangente of the specified value *)
+  let native_math_atan mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (atan f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns e raised to the power of the specified value *)
+  let native_math_exp mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (exp f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the natural logarithm of the specified value *)
+  let native_math_log mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (log f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the square root of the specified value *)
+  let native_math_sqrt mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (sqrt f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the smallest double that is not less than the specified value and is equal to an integer *)
+  let native_math_ceil mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (ceil f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the largest double that is not greater than the specified value and is equal to an integer *)
+  let native_math_floor mem : statement_return =
+    match expect_float mem "a" with
+    | Some f -> return_float mem (floor f)
+    | _ -> Return java_0f
+  in
+  (* class Math : returns the angle of polar coordinates from the specified rectangulat coordinates *)
+  let native_math_atan2 mem : statement_return =
+    match (expect_float mem "y"), (expect_float mem "x") with
+    | Some fy, Some fx -> return_float mem (atan2 fy fx)
+    | _, _ -> Return java_0f
+  in
+  (* class Math : returns the first value raised to the power of the second value *)
+  let native_math_pow mem : statement_return =
+    match (expect_float mem "a"), (expect_float mem "b") with
+    | Some fa, Some 0.0 -> Return java_1f
+    | Some fa, Some fb when (abs_float fa = 1.0) && (classify_float fb = FP_infinite) -> return_float mem nan
+    | Some fa, Some fb -> return_float mem (fa ** fb)
+    | _, _ -> Return java_0f
   in
 
   let native_set_in0 (mem : 'a Memory.memory ref) : statement_return =
@@ -168,17 +268,6 @@ let init_natives debug =
     Unix.write fd buff offest len;
     Void in
 
-  let native_int_pow (mem : 'a Memory.memory ref) : statement_return =
-    let rec pow a = function
-      | 0 -> 1
-      | 1 -> a
-      | n ->
-        let b = pow a (n / 2) in
-        b * b * (if n mod 2 = 0 then 1 else a) in
-    let a = match (Memory.get_object_from_name mem "a") with Primitive(Int(i)) -> i in
-    let b = match (Memory.get_object_from_name mem "b") with Primitive(Int(i)) -> i in
-    Return (Memory.add_object mem (Primitive(Int(pow a b)))) in
-
   let native_init_socket (mem : 'a Memory.memory ref) : statement_return =
     let this = Memory.get_object_from_name mem "this" in
     let java_port_addr = get_attribute_value_address mem this "port" in
@@ -246,6 +335,19 @@ let init_natives debug =
   Hashtbl.add natives "Double._isNaN" native_double_isNaN;
   Hashtbl.add natives "Double._isInfinite" native_double_isInfinite;
   Hashtbl.add natives "Double._intValue" native_double_intValue;
+  Hashtbl.add natives "Math.sin" native_math_sin;
+  Hashtbl.add natives "Math.cos" native_math_cos;
+  Hashtbl.add natives "Math.tan" native_math_tan;
+  Hashtbl.add natives "Math.asin" native_math_asin;
+  Hashtbl.add natives "Math.acos" native_math_acos;
+  Hashtbl.add natives "Math.atan" native_math_atan;
+  Hashtbl.add natives "Math.exp" native_math_exp;
+  Hashtbl.add natives "Math.log" native_math_log;
+  Hashtbl.add natives "Math.sqrt" native_math_sqrt;
+  Hashtbl.add natives "Math.ceil" native_math_ceil;
+  Hashtbl.add natives "Math.floor" native_math_floor;
+  Hashtbl.add natives "Math.atan2" native_math_atan2;
+  Hashtbl.add natives "Math.pow" native_math_pow;
   Hashtbl.add natives "System.setIn0" native_set_in0;
   Hashtbl.add natives "System.setOut0" native_set_err0;
   Hashtbl.add natives "System.setErr0" native_set_err0;
@@ -254,7 +356,6 @@ let init_natives debug =
   Hashtbl.add natives "FileOutputStream.writeBytes" native_write_bytes;
   Hashtbl.add natives "FileOutputStream.close" native_close_file;
   Hashtbl.add natives "File.open" native_open_file;
-  Hashtbl.add natives "Math.pow" native_int_pow;
   Hashtbl.add natives "ServerSocket.init" native_init_socket;
   Hashtbl.add natives "ServerSocket.accept" native_accept_socket;
   Hashtbl.add natives "Socket.close" native_close_file;

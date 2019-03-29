@@ -393,6 +393,7 @@ let make_populated_memory () : 'a Memory.memory ref =
   Memory.add_link_name_object mem "__false" (Primitive(Boolean false));
   Memory.add_link_name_object mem "__0f" (Primitive(Float 0.0));
   Memory.add_link_name_object mem "__empty_chr" (Primitive(Char (char_of_int 0)));
+  Memory.add_link_name_object mem "__1f" (Primitive(Float 1.0));
   mem
 ;;
 
@@ -404,6 +405,7 @@ let java_true : Memory.memory_address = 3;;
 let java_false : Memory.memory_address = 4;;
 let java_0f : Memory.memory_address = 5;;
 let java_empty_char : Memory.memory_address = 6;;
+let java_1f : Memory.memory_address = 7;;
 
 let print_memory mem : unit =
   Memory.print_memory mem print_memory_unit

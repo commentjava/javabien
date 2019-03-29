@@ -25,5 +25,11 @@ class Memorygc{
     System.out.println(Double.toString(.792346));
     System.out.println(Double.toString(0.00000000235657));
     System.out.println(Double.toString(100000000000000.0));
+
+    Debug.debug("coucou");
+    Debug.debug(Integer.parseInt("65315"));
+    Debug.debug(Double.NaN == Double.NaN);
+    Debug.debug(Double.NaN != Double.NaN);
+    Debug.debug("coucou");
   }
 }

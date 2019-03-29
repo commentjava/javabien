@@ -219,7 +219,9 @@ class String {
     public int compareTo(String anotherString) {
             int len1 = this.count;
             int len2 = anotherString.count;
-            int n = Math.min(len1, len2);
+            //int n = Math.min(len1, len2);
+            int n = len1;
+            if (len2 < n) { n = len2; } // TODO : use INTEGER.min
             char v1[] = this.value;
             char v2[] = anotherString.value;
             int i = 0;

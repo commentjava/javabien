@@ -12,7 +12,7 @@ class Integer {
                                 throw Exception();
 
                         }
-                        v += k * Math.pow(10, arr.length - i - 1);
+                        v = k + v * 10;
                 }
                 return v;
         }
