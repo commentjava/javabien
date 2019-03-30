@@ -248,7 +248,7 @@ class Double{
   public static String toString(double d){
     if(Double._isNaN(d)){ return "NaN"; }
     String res = "";
-    if(d < 0){ res = String.concat(res, "-"); }
+    if(d < 0 || 1.0 / d < 0){ res = String.concat(res, "-"); d = -d; }
     if(Double._isInfinite(d)){ res = String.concat(res, "Infinity"); }
     else if(d == 0){ res = String.concat(res, "0.0"); }
     else if(0.001 <= d && d < 10000000){
