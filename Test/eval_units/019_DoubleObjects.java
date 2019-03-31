@@ -1,7 +1,4 @@
-//: 1023
-//: -1022
-//: 64
-
+// calculs
 //: 4.68
 //: 5.68
 //: -4.68
@@ -25,20 +22,88 @@
 //: false
 //: true
 
+// Double object
+// constants
+//: inf
+//: -inf
+//: -nan
+//: 1.79769313486e+308
+//: 4.94065645841e-324
+
+// toString
+
+//: 4
+//: true
+//: true
+//: true
+//: true
+
+//: 3
+//: true
+//: true
+//: true
+
+//: 9
+//: true
+//: true
+//: true
+//: true
+//: true
+//: true
+//: true
+//: true
+//: true
+
+//: 6
+//: true
+//: true
+//: true
+//: true
+//: true
+//: true
+
+//: 5
+//: true
+//: true
+//: true
+//: true
+//: true
+
+// valueOf
+
+// parseDouble
+
+// isNaN
 //: true
 //: false
 //: false
 
+// isInfinite
 //: false
 //: true
-//: true
 //: false
 
-//: 35.29
-//: 15.07
-//: 9.29
-//: 5.78
+// intValue
+//: 2
+//: 2
+//: 4
+//: 9
+//: 4611686018427387903
+//: 4611686018427387903
+//: 0
 
+// doubleValue
+//: 2.61
+
+ // compareTo
+//: 1
+//: 0
+//: -1
+//: -1
+//: 1
+//: -1
+
+// compare
 //: 0
 //: 1
 //: -1
@@ -49,21 +114,14 @@
 //: 0
 //: -1
 
-//: 1
-//: -1
-//: 1
-//: -1
-//: 0
 
 class Main{
   static void main(String[] args) {
-    Double a = new Double(2.61);
+    System.initializeSystemClass();  // Mandatory call
 
-    Debug.debug(Double.MAX_EXPONENT);
-    Debug.debug(Double.MIN_EXPONENT);
-    Debug.debug(Double.SIZE);
-
-    double b = 2.0, c = 4.68, d = 9;
+    double a = 2.61, b = 2.0, c = 4.68, d = 9;
+    Double da = new Double(a), db = new Double(b), dc = new Double(c), dd = new Double(d);
+    // calculs
     Debug.debug(c++);
     Debug.debug(c--);
     Debug.debug(-c);
@@ -87,24 +145,88 @@ class Main{
     Debug.debug(b >= c);
     Debug.debug(b <= c);
 
-    double n = Double.NaN;
-    boolean bn = Double.isNaN(n);
-    Debug.debug(Double.isNaN(n));
+    // Double object
+    // constants
+    Debug.debug(Double.POSITIVE_INFINITY);
+    Debug.debug(Double.NEGATIVE_INFINITY);
+    Debug.debug(Double.NaN);
+    Debug.debug(Double.MAX_VALUE);
+    Debug.debug(Double.MIN_VALUE);
+
+    // toString
+    String sa = Double.toString(a);
+    Debug.debug(sa.length());
+    Debug.debug(sa.toCharArray()[0] == '2');
+    Debug.debug(sa.toCharArray()[1] == '.');
+    Debug.debug(sa.toCharArray()[2] == '6');
+    Debug.debug(sa.toCharArray()[3] == '1');
+    String sb = Double.toString(Double.NaN);
+    Debug.debug(sb.length());
+    Debug.debug(sb.toCharArray()[0] == 'N');
+    Debug.debug(sb.toCharArray()[1] == 'a');
+    Debug.debug(sb.toCharArray()[2] == 'N');
+    String sc = Double.toString(Double.NEGATIVE_INFINITY);
+    Debug.debug(sc.length());
+    Debug.debug(sc.toCharArray()[0] == '-');
+    Debug.debug(sc.toCharArray()[1] == 'I');
+    Debug.debug(sc.toCharArray()[2] == 'n');
+    Debug.debug(sc.toCharArray()[3] == 'f');
+    Debug.debug(sc.toCharArray()[4] == 'i');
+    Debug.debug(sc.toCharArray()[5] == 'n');
+    Debug.debug(sc.toCharArray()[6] == 'i');
+    Debug.debug(sc.toCharArray()[7] == 't');
+    Debug.debug(sc.toCharArray()[8] == 'y');
+    String sd = Double.toString(0.00001);
+    Debug.debug(sd.length());
+    Debug.debug(sd.toCharArray()[0] == '1');
+    Debug.debug(sd.toCharArray()[1] == '.');
+    Debug.debug(sd.toCharArray()[2] == '0');
+    Debug.debug(sd.toCharArray()[3] == 'E');
+    Debug.debug(sd.toCharArray()[4] == '-');
+    Debug.debug(sd.toCharArray()[5] == '5');
+    String se = Double.toString(100000000.0);
+    Debug.debug(se.length());
+    Debug.debug(se.toCharArray()[0] == '1');
+    Debug.debug(se.toCharArray()[1] == '.');
+    Debug.debug(se.toCharArray()[2] == '0');
+    Debug.debug(se.toCharArray()[3] == 'E');
+    Debug.debug(se.toCharArray()[4] == '8');
+
+    // valueOf
+
+    //parseDouble
+
+    // isNaN
+    Debug.debug(Double.isNaN(Double.NaN));
     Debug.debug(Double.isNaN(c));
     Debug.debug(Double.isNaN(d));
 
-    double df = Double.NEGATIVE_INFINITY;
+    //isInfinite
     Debug.debug(Double.isInfinite(c));
-    Debug.debug(Double.isFinite(d));
-    Debug.debug(Double.isInfinite(df));
-    Debug.debug(Double.isFinite(df));
+    Debug.debug(Double.isInfinite(Double.NEGATIVE_INFINITY));
+    Debug.debug(Double.isInfinite(Double.NaN));
 
-    Double copyd = Double.valueOf(35.29);
-    Debug.debug(copyd.floatValue());
-    Debug.debug(Double.sum(5.78, 9.29));
-    Debug.debug(Double.max(5.78, 9.29));
-    Debug.debug(Double.min(5.78, 9.29));
+    //intValue
+    Debug.debug(da.intValue());
+    Debug.debug(db.intValue());
+    Debug.debug(dc.intValue());
+    Debug.debug(dd.intValue());
+    Debug.debug((new Double(5611686018427387903.0)).intValue());
+    Debug.debug((new Double(Double.POSITIVE_INFINITY)).intValue());
+    Debug.debug((new Double(Double.NaN)).intValue());
 
+    // doubleValue
+    Debug.debug((new Double(a)).doubleValue());
+
+    // compareTo
+    Debug.debug(da.compareTo(db));
+    Debug.debug(dc.compareTo(dc));
+    Debug.debug(dd.compareTo(new Double(Double.POSITIVE_INFINITY)));
+    Debug.debug((new Double(Double.NEGATIVE_INFINITY)).compareTo(dd));
+    Debug.debug((new Double(Double.NaN)).compareTo(da));
+    Debug.debug(da.compareTo(new Double(Double.NaN)));
+
+    // compare
     Debug.debug(Double.compare(Double.NaN, Double.NaN));
     Debug.debug(Double.compare(Double.NaN, Double.POSITIVE_INFINITY));
     Debug.debug(Double.compare(5.87, Double.NaN));
@@ -115,12 +237,5 @@ class Main{
     Debug.debug(Double.compare(5.87, 5.87));
     Debug.debug(Double.compare(5.87, 587));
 
-    Double no = new Double(n);
-    Double dfo = new Double(df);
-    Debug.debug(no.compareTo(dfo));
-    Debug.debug(copyd.compareTo(no));
-    Debug.debug(copyd.compareTo(dfo));
-    Debug.debug((new Double(5.87)).compareTo(copyd));
-    Debug.debug((new Double(35.29)).compareTo(copyd));
   }
 }

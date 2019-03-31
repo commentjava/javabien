@@ -32,9 +32,13 @@ class Memorygc{
     Debug.debug(Double.NaN != Double.NaN);
     Debug.debug("coucou");
 */
-    double d = -2.0 + 4.0;
+    double d = (-2.0) + 4.0;
     System.out.println(Double.toString(0.0));
     String s = Double.toString(d);
     System.out.println(Double.toString(d));
+
+    int i = Integer.parseInt("3");
+    char c1 = '0';
+    double d2 = c1 * 1.0;
   }
 }

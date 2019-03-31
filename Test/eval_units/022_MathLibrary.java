@@ -3,7 +3,7 @@
 //: 3.14159265359
 
 // sin
-//: nan
+//: -nan
 // why ??
 //: -nan
 //: -nan
@@ -11,33 +11,33 @@
 //: 0.5
 
 // cos
-//: nan
+//: -nan
 //: -nan
 //: -nan
 //: true
 //: 0.5
 
 // tan
-//: nan
+//: -nan
 //: -nan
 //: -nan
 //: true
 //: 1.
 
 // asin
-//: nan
+//: -nan
 //: nan
 //: 1.57079632679
 //: 0.523598775598
 
 // acos
-//: nan
+//: -nan
 //: nan
 //: 0.
 //: 1.0471975512
 
 // atan
-//: nan
+//: -nan
 //: 1.57079632679
 //: 0.785398163397
 //: 0.463647609001
@@ -49,7 +49,7 @@
 // exp
 //: 7.38905609893
 //: 148.413159103
-//: nan
+//: -nan
 //: inf
 //: 0.
 
@@ -57,7 +57,7 @@
 //: 0.69314718056
 //: 1.60943791243
 //: nan
-//: nan
+//: -nan
 //: inf
 //: -inf
 
@@ -66,7 +66,7 @@
 //: 23.75432
 
 // sqrt
-//: nan
+//: -nan
 //: -nan
 //: inf
 //: 0.
@@ -74,7 +74,7 @@
 
 // ceil
 //: 5.
-//: nan
+//: -nan
 //: inf
 //: -inf
 //: 5.
@@ -82,7 +82,7 @@
 
 // floor
 //: 5.
-//: nan
+//: -nan
 //: inf
 //: -inf
 //: 4.
@@ -90,7 +90,7 @@
 
 // rint
 //: 5.
-//: nan
+//: -nan
 //: inf
 //: -inf
 //: 4.
@@ -99,8 +99,8 @@
 //: 2.
 
 // atan2
-//: nan
-//: nan
+//: -nan
+//: -nan
 //: 0.
 //: 0.
 //: -0.
@@ -128,9 +128,9 @@
 //: 1.
 //: 1.
 //: 5.2
-//: nan
+//: -nan
 //: 1.
-//: nan
+//: -nan
 //: inf
 //: inf
 //: 0.
@@ -156,10 +156,10 @@
 
 // round
 //: 0
-// : -4611686018427387904
-// : -4611686018427387904
-// : 4611686018427387903
-// : 4611686018427387903
+//: -4611686018427387904
+//: -4611686018427387904
+//: 4611686018427387903
+//: 4611686018427387903
 //: 6
 //: 4
 //: 3
@@ -171,14 +171,14 @@
 //: 0.
 //: inf
 //: inf
-//: nan
+//: -nan
 
 // max
 //: 6.7
 //: 7.7
 //: inf
-//: nan
-//: nan
+//: -nan
+//: -nan
 //: 0.
 //: 0.
 
@@ -186,8 +186,8 @@
 //: 11.7
 //: 13.7
 //: -inf
-//: nan
-//: nan
+//: -nan
+//: -nan
 //: -0.
 //: -0.
 
@@ -196,12 +196,10 @@ class Main{
     System.initializeSystemClass();  // Mandatory call
 
     // Constants
-    System.out.println("Constants");
     Debug.debug(Math.E);
     Debug.debug(Math.PI);
 
     // sin
-    System.out.println("sin");
     Debug.debug(Math.sin(Double.NaN));
     Debug.debug(Math.sin(Double.POSITIVE_INFINITY));
     Debug.debug(Math.sin(Double.NEGATIVE_INFINITY));
@@ -209,7 +207,6 @@ class Main{
     Debug.debug(Math.sin(Math.PI / 6));
 
     // cos
-    System.out.println("cos");
     Debug.debug(Math.cos(Double.NaN));
     Debug.debug(Math.cos(Double.POSITIVE_INFINITY));
     Debug.debug(Math.cos(Double.NEGATIVE_INFINITY));
@@ -217,7 +214,6 @@ class Main{
     Debug.debug(Math.cos(Math.PI / 3));
 
     // tan
-    System.out.println("tan");
     Debug.debug(Math.tan(Double.NaN));
     Debug.debug(Math.tan(Double.POSITIVE_INFINITY));
     Debug.debug(Math.tan(Double.NEGATIVE_INFINITY));
@@ -225,33 +221,28 @@ class Main{
     Debug.debug(Math.tan(Math.PI / 4));
 
     // asin
-    System.out.println("asin");
     Debug.debug(Math.asin(Double.NaN));
     Debug.debug(Math.asin(2.0));
     Debug.debug(Math.asin(1.0));
     Debug.debug(Math.asin(0.5));
 
     // acos
-    System.out.println("acos");
     Debug.debug(Math.acos(Double.NaN));
     Debug.debug(Math.acos(2.0));
     Debug.debug(Math.acos(1.0));
     Debug.debug(Math.acos(0.5));
 
     // atan
-    System.out.println("atan");
     Debug.debug(Math.atan(Double.NaN));
     Debug.debug(Math.atan(Double.POSITIVE_INFINITY));
     Debug.debug(Math.atan(1.0));
     Debug.debug(Math.atan(0.5));
 
     // toRadians, toDegrees
-    System.out.println("toRadians, toDegrees");
     Debug.debug(Math.toRadians(90));
     Debug.debug(Math.toDegrees(Math.PI / 2));
 
     // exp
-    System.out.println("exp");
     Debug.debug(Math.exp(2.0));
     Debug.debug(Math.exp(5.0));
     Debug.debug(Math.exp(Double.NaN));
@@ -259,7 +250,6 @@ class Main{
     Debug.debug(Math.exp(Double.NEGATIVE_INFINITY));
 
     // log
-    System.out.println("log");
     Debug.debug(Math.log(2.0));
     Debug.debug(Math.log(5.0));
     Debug.debug(Math.log(-1));
@@ -268,12 +258,10 @@ class Main{
     Debug.debug(Math.log(0));
 
     // exp, log
-    System.out.println("exp, log");
     Debug.debug(Math.exp(Math.log(23.75432)));
     Debug.debug(Math.log(Math.exp(23.75432)));
 
     // sqrt
-    System.out.println("sqrt");
     Debug.debug(Math.sqrt(Double.NaN));
     Debug.debug(Math.sqrt(-1));
     Debug.debug(Math.sqrt(Double.POSITIVE_INFINITY));
@@ -281,7 +269,6 @@ class Main{
     Debug.debug(Math.sqrt(2));
 
     // ceil
-    System.out.println("ceil");
     Debug.debug(Math.ceil(5.0));
     Debug.debug(Math.ceil(Double.NaN));
     Debug.debug(Math.ceil(Double.POSITIVE_INFINITY));
@@ -290,7 +277,6 @@ class Main{
     Debug.debug(Math.ceil(-0.7));
 
     // floor
-    System.out.println("floor");
     Debug.debug(Math.floor(5.0));
     Debug.debug(Math.floor(Double.NaN));
     Debug.debug(Math.floor(Double.POSITIVE_INFINITY));
@@ -299,7 +285,6 @@ class Main{
     Debug.debug(Math.floor(-0.7));
 
     // rint
-    System.out.println("rint");
     Debug.debug(Math.rint(5.0));
     Debug.debug(Math.rint(Double.NaN));
     Debug.debug(Math.rint(Double.POSITIVE_INFINITY));
@@ -310,7 +295,6 @@ class Main{
     Debug.debug(Math.rint(1.5));
 
     // atan2
-    System.out.println("atan2");
     Debug.debug(Math.atan2(Double.NaN, 0.5));
     Debug.debug(Math.atan2(0.5, Double.NaN));
     Debug.debug(Math.atan2(0.0, 3.0));
@@ -337,7 +321,6 @@ class Main{
     Debug.debug(Math.atan2(-2.0, 5.0));
 
     // pow
-    System.out.println("pow");
     Debug.debug(Math.pow(5.2, 0.0));
     Debug.debug(Math.pow(5.2, 1.0 / Double.NEGATIVE_INFINITY));
     Debug.debug(Math.pow(5.2, 1.0));
@@ -368,18 +351,16 @@ class Main{
     Debug.debug(Math.pow(-2.0, 5.0));
 
     // round
-    System.out.println("round");
     Debug.debug(Math.round(Double.NaN));
-    //Debug.debug(Math.round(Double.NEGATIVE_INFINITY));
-    //Debug.debug(Math.round(-5611686018427387903.0));
-    //Debug.debug(Math.round(Double.POSITIVE_INFINITY));
-    //Debug.debug(Math.round(5611686018427387903.0));
+    Debug.debug(Math.round(Double.NEGATIVE_INFINITY));
+    Debug.debug(Math.round(-5611686018427387903.0));
+    Debug.debug(Math.round(Double.POSITIVE_INFINITY));
+    Debug.debug(Math.round(5611686018427387903.0));
     Debug.debug(Math.round(5.7));
     Debug.debug(Math.round(4.3));
     Debug.debug(Math.round(2.5));
 
     // abs
-    System.out.println("abs");
     Debug.debug(Math.abs(5.7));
     Debug.debug(Math.abs(-5.7));
     Debug.debug(Math.abs(0.0));
@@ -389,7 +370,6 @@ class Main{
     Debug.debug(Math.abs(Double.NaN));
 
     // max
-    System.out.println("max");
     Debug.debug(Math.max(5.1, 6.7));
     Debug.debug(Math.max(7.7, Double.NEGATIVE_INFINITY));
     Debug.debug(Math.max(8.7, Double.POSITIVE_INFINITY));
@@ -399,7 +379,6 @@ class Main{
     Debug.debug(Math.max(1.0 / Double.NEGATIVE_INFINITY, 0.0));
 
     // min
-    System.out.println("min");
     Debug.debug(Math.min(11.7, 12.7));
     Debug.debug(Math.min(13.7, Double.POSITIVE_INFINITY));
     Debug.debug(Math.min(14.7, Double.NEGATIVE_INFINITY));
