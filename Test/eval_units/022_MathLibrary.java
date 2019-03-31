@@ -3,41 +3,40 @@
 //: 3.14159265359
 
 // sin
-//: -nan
-// why ??
-//: -nan
-//: -nan
+//: nan
+//: nan
+//: nan
 //: 1.
 //: 0.5
 
 // cos
-//: -nan
-//: -nan
-//: -nan
+//: nan
+//: nan
+//: nan
 //: true
 //: 0.5
 
 // tan
-//: -nan
-//: -nan
-//: -nan
+//: nan
+//: nan
+//: nan
 //: true
 //: 1.
 
 // asin
-//: -nan
+//: nan
 //: nan
 //: 1.57079632679
 //: 0.523598775598
 
 // acos
-//: -nan
+//: nan
 //: nan
 //: 0.
 //: 1.0471975512
 
 // atan
-//: -nan
+//: nan
 //: 1.57079632679
 //: 0.785398163397
 //: 0.463647609001
@@ -49,58 +48,58 @@
 // exp
 //: 7.38905609893
 //: 148.413159103
-//: -nan
-//: inf
+//: nan
+//: infinity
 //: 0.
 
 // log
 //: 0.69314718056
 //: 1.60943791243
 //: nan
-//: -nan
-//: inf
-//: -inf
+//: nan
+//: infinity
+//: neg_infinity
 
 // exp, log
 //: 23.75432
 //: 23.75432
 
 // sqrt
-//: -nan
-//: -nan
-//: inf
+//: nan
+//: nan
+//: infinity
 //: 0.
 //: 1.41421356237
 
 // ceil
 //: 5.
-//: -nan
-//: inf
-//: -inf
+//: nan
+//: infinity
+//: neg_infinity
 //: 5.
 //: -0.
 
 // floor
 //: 5.
-//: -nan
-//: inf
-//: -inf
+//: nan
+//: infinity
+//: neg_infinity
 //: 4.
 //: -1.
 
 // rint
 //: 5.
-//: -nan
-//: inf
-//: -inf
+//: nan
+//: infinity
+//: neg_infinity
 //: 4.
 //: -0.
 //: 0.
 //: 2.
 
 // atan2
-//: -nan
-//: -nan
+//: nan
+//: nan
 //: 0.
 //: 0.
 //: -0.
@@ -128,30 +127,30 @@
 //: 1.
 //: 1.
 //: 5.2
-//: -nan
+//: nan
 //: 1.
-//: -nan
-//: inf
-//: inf
+//: nan
+//: infinity
+//: infinity
 //: 0.
 //: 0.
 //: nan
 //: nan
 //: 0.
 //: 0.
-//: inf
-//: inf
+//: infinity
+//: infinity
 //: 0.
 //: 0.
 //: -0.
 //: -0.
-//: inf
-//: inf
-//: -inf
-//: -inf
+//: infinity
+//: infinity
+//: neg_infinity
+//: neg_infinity
 //: 0.00136768670565
 //: -0.000263016674163
-//: -nan
+//: nan
 //: -32.
 
 // round
@@ -169,25 +168,25 @@
 //: 5.7
 //: 0.
 //: 0.
-//: inf
-//: inf
-//: -nan
+//: infinity
+//: infinity
+//: nan
 
 // max
 //: 6.7
 //: 7.7
-//: inf
-//: -nan
-//: -nan
+//: infinity
+//: nan
+//: nan
 //: 0.
 //: 0.
 
 // min
 //: 11.7
 //: 13.7
-//: -inf
-//: -nan
-//: -nan
+//: neg_infinity
+//: nan
+//: nan
 //: -0.
 //: -0.
 

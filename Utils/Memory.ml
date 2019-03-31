@@ -328,7 +328,7 @@ let string_from_memory_unit (u : memory_unit) : string =
   | Primitive (Int i) -> string_of_int i
   | Primitive (Boolean b) -> string_of_bool b
   | Primitive (Char c) -> String.make 1 c
-  | Primitive (Float f) -> string_of_float f
+  | Primitive (Float f) -> Printf.sprintf "%F" f
 ;;
 
 (*

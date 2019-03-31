@@ -24,9 +24,9 @@
 
 // Double object
 // constants
-//: inf
-//: -inf
-//: -nan
+//: infinity
+//: neg_infinity
+//: nan
 //: 1.79769313486e+308
 //: 4.94065645841e-324
 
