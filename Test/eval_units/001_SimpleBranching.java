@@ -5,8 +5,8 @@ class Main {
         static void main(String[] args) {
                 boolean a = true;
                 Debug.debug(a);
+                int b = 4;
                 if (a) {
-                        int b = 4;
                         Debug.debug(b);
                 } else {
                         int c = 5;
