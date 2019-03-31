@@ -1,22 +1,21 @@
 Minijava compiler Javabien
 ===========================
 
-
 > The minijavac compiler.
-> 
+>
 > A compilation project for Third year students of Telecom Bretagne.
-> 
+>
 > 'ocamlbuild Main.byte' (or native) to build the compiler. The main file
 > is Main/Main.ml, it should not be modified. It opens the given file,
 > creates a lexing buffer, initializes the location and call the compile
 > function of the module Main/compile.ml. It is this function that you
 > should modify to call your parser.
-> 
+>
 > 'ocamlbuild Main.byte -- <filename>' (or native) to build and then execute
 > the compiler on the file given. By default, the program searches for
 > file with the extension .java and append it to the given filename if
 > it does not end with it.
-> 
+>
 > If you want to reuse an existing ocaml library. Start by installing it
 > with opam. For example, to use colored terminal output you
 > use 'opam install ANSITerminal'.
@@ -24,7 +23,7 @@ Minijava compiler Javabien
 > `ocamlbuild -use-ocamlfind Main.byte -- tests/UnFichierDeTest.java`
 > and you must modify your `_tags` file to declare the library:
 > true: package(ANSITerminal)
-> 
+>
 > The Lexer/Parser is incomplete but should be ok for phase2. It
 > contains a remaining conflict: a conflict between expression and
 > declaration of variable in statements that could be solved at the
@@ -73,7 +72,7 @@ make test-all
 ```
 
 To pin-point a specific problem, tests can be run individually, the list of
-available tests receipes are available using the following command:
+available tests recipes are available using the following command:
 ```bash
 make test-list
 ```
@@ -84,19 +83,19 @@ make test-list
 
 #### Presentation
 
-For each program the interpreter create a stack of memory which allow the the
-java program to store and retreive variables. A memory is built around three
+For each program the interpreter creates a stack of memory which allow the
+java program to store and retrieve variables. A memory is built around three
 main structures:
 
 - The `data_store`: This is an unstructured key-value map that associate an
   arbitrary key to a memory object. That object can be a Java object, a Java
-  class, a Java variable, a method, a Java array... 
-- The `reference_store`: this structure specify the association between a Java
+  class, a Java variable, a method, a Java array...
+- The `reference_store`: this structure specifies the association between a Java
   name (class name, object name...) with an identifier in the `data_store`.
-  This structure define if a variable is in scope or not.
+  This structure defines if a variable is in scope or not.
 - The `names`: which is essentially a stack of `reference_stores`
 
-Both strutures are built around an Ocaml Hashtbl, and the implementation is
+Both structures are built around an Ocaml Hashtbl, and the implementation is
 done in a module details located in the in the
 [Utils/Memory.ml](Utils/Memory.ml) file.
 
@@ -111,7 +110,7 @@ top. We call this `names` stack a transparent stack as it can be written only
 on top but it can be peaked through.
 
 In order to handle function call, we create another stack of `names` that is
-opaque: only the top item can be written and read. In short the memory model
+opaque: only the top item can be written and read. In short, the memory model
 can be summarized using the following diagram:
 
 ![Program memory model](doc/memory_model.png)
@@ -119,7 +118,6 @@ can be summarized using the following diagram:
 The following diagram illustrate an example of memory binding:
 
 ![Program memory model example](doc/memory_model_example.png)
-
 
 #### Garbage collection
 
@@ -132,28 +130,27 @@ This method is slow and have a complexity around O(N) with N equal to the
 number of objects in the datastore but is good enough for our use case.
 
 The garbage collector is called at every block return, this heuristic can be
-much more improved but we sticked with it.
-
+much more improved but we stuck with it.
 
 #### Performance notices
 
-This memory model has one main caveat : for each memory object retreived,
+This memory model has one main caveat: for each memory object retrieved,
 created or modified we need to make an indirection from the `names` store to
-the `data_store`. This can lead to some penalities.
+the `data_store`. This can lead to some penalties.
 
 This is even worse for Arrays in which each element of an array is a reference
 to an object in the `data_store`. In which case, iterating over an array
-require to resolve each object which are not necessarily stored in continuous
+require resolving each object which are not necessarily stored in continuous
 parts of the memory.
 
 ### Natives and stdlib
 
-When starting a program, the interpreter will load into memory an environement
-of existing classes. Thoses classes are described in the  `stdlib/` folder.
+When starting a program, the interpreter will load into memory an environment
+of existing classes. Those classes are described in the `stdlib/` folder.
 We tried to follow the jdk classes, but they are nowhere as complete as the
 jdk.
 
-In order to handle such classes we have implemented the Java method modifier:
+In order to handle such classes, we have implemented the Java method modifier:
 `native`. When a `native` method is met, the interpreter will search in an
 Hashtbl if the method is not referenced in Ocaml.
 
@@ -165,20 +162,19 @@ can be used anywhere in a program.
 
 ### Typing tests
 
-There is two receipes dediacated to the typing suite:
+There are two recipes dedicated to the typing suite:
 * `make test-ShouldWorkTypeTest.byte`: this suite will try to type the files
-  located in the `Test/typing/should_work` folder and verify that every files
+  located in the `Test/typing/should_work` folder and verify that every file
   here are correctly typed.
 * `make test-ShouldFailTypeTest.byte`: this suite will try to type the files
-  located in the `Test/typing/should_fail` folder and  check that each file
+  located in the `Test/typing/should_fail` folder and check that each file
   fail the typing phase, however it will not check _why_ the test failed.
-
 
 ### Evaluation tests
 
-Using the receipe `make test-EvalUnitTest.byte` it is possible to run a unit
+Using the recipe `make test-EvalUnitTest.byte` it is possible to run a unit
 test suite against a list of files located in the `Test/eval_units/` folder.
-This tests will check that the outputs of `Debug.debug(Object o)` matches with
+These tests will check that the outputs of `Debug.debug(Object o)` matches with
 the comment lines starting with `//:` located at the top of the file. For
 example the following test will pass:
 
@@ -203,14 +199,13 @@ class Main {
 }
 ```
 
-This test suite allow us to verify that the output of a script matches the
+This test suite allows us to verify that the output of a script matches the
 expected one.
 
 To launch a specific unit test, the `main-class` argument can be used:
 ```bash
 ./Main.byte -skip-tc -main-class Main Test/eval_units/000_VarDeclaration.java
 ```
-
 
 ## Features implemented
 
@@ -268,7 +263,7 @@ we might want to integrate in JavaBien.
 #### Memory
 * [x] Simple memory heap
 * [x] Simple memory stack
-* [x] Unamed pointers
+* [x] Unnamed pointers
 * [x] Garbage collection
 
 #### System
@@ -284,15 +279,14 @@ we might want to integrate in JavaBien.
 * [ ] Imports
 * [ ] Informative errors
 
-
 ## Parse bugs and corrections
 
-We have notice some errors in the builded AST, they are listed below and are
+We have noticed some errors in the built AST, they are listed below and are
 fixed when we needed. Some patches might be merged back upstream for next
 years.
 
 - b = true && true; (also <= < > >=)
-This doesn't respect operators precedence.
+This doesn't respect operators’ precedence.
 AST:
 ```
 Expression
@@ -359,4 +353,3 @@ arr = {3,4}.int[2][][4];
 ```
 
 - ~~Char literal are not parsed correctly~~ Fixed in 5475cacae3030bd5bc3c96b0b3387fb2038f475a (not fixed: escaped chars like `\n`)
-
