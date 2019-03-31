@@ -305,7 +305,7 @@ let rec check_expression (env: TypingEnv.tc_env) (expression: AST.expression) =
     | Op_neg -> Type.Primitive(ensure_numeric_type exp_type)
     | Op_incr -> Type.Primitive(ensure_numeric_type exp_type)
     | Op_decr -> Type.Primitive(ensure_numeric_type exp_type)
-    | Op_bnot -> Type.Primitive(ensure_boolean_type exp_type)
+    | Op_bnot -> Type.Primitive(ensure_numeric_type exp_type)
   )
   | AST.Op(e1, op, e2) -> check_exp_op env e1 op e2
   | AST.CondOp(e, e2, e3) -> raise(Failure "Expression condop not implemented") (* section 15.25 Some complicated cases won't be handled *)
