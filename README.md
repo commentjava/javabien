@@ -129,8 +129,10 @@ done each object in the `data_store` that is not marked as seen is deleted.
 This method is slow and have a complexity around O(N) with N equal to the
 number of objects in the datastore but is good enough for our use case.
 
-The garbage collector is called at every block return, this heuristic can be
-much more improved but we stuck with it.
+The garbage collector is called after each computation of an expression. In
+order to keep good performances, garbage is actually collected only if there is
+at least twice as many objects in the `data_store` than at the end of the last
+garbage collection.
 
 #### Performance notices
 
@@ -228,7 +230,7 @@ we might want to integrate in JavaBien.
 * [x] Postfix operations
 * [x] Prefix operations
 * [x] Variable declaration
-* [x] Variable assignation (only `Assign`)
+* [x] Variable assignation
 * [x] null element
 * [x] Arrays
   * [x] Creation
@@ -382,3 +384,49 @@ arr = {3,4}.int[2][][4];
 ```
 
 - ~~Char literal are not parsed correctly~~ Fixed in 5475cacae3030bd5bc3c96b0b3387fb2038f475a (not fixed: escaped chars like `\n`)
+
+- double d = -2.0 + 4.0;
+This doesn't respect operators precedence.
+AST :
+```
+└ VarDecl
+   └ Element
+      ├ double
+      ├ d
+      └ Expression
+         └ Pre
+            ├ -
+            └ Expression
+               └ Op
+                  ├ Expression
+                  │  └ Val
+                  │     └ Float
+                  │        └ 2.0
+                  ├  +
+                  └ Expression
+                     └ Val
+                        └ Float
+                           └ 4.0
+```
+
+Expected AST :
+```
+└ VarDecl
+   └ Element
+      ├ double
+      ├ d
+      └ Expression
+         └ Op
+            ├ Expression
+            │   └ Pre
+            │      ├ -
+            │      └ Expression
+            │         └ Val
+            │            └ Float
+            │               └ 2.0
+            ├  +
+            └ Expression
+               └ Val
+                  └ Float
+                     └ 4.0
+```
