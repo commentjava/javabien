@@ -279,7 +279,36 @@ we might want to integrate in JavaBien.
 * [ ] Imports
 * [ ] Informative errors
 
-## Parse bugs and corrections
+### Type checking
+
+You can find a non-exhaustive list of the `compile-time errors` cases specified by the specification in the file [TypeErrors](./TypeErrors.md) and whether we handle them or not. Note that this file may not be up to date with our current implementation.
+
+Our type-checking environment uses two `HashTbl` (the one provided in [Utils/Env.ml](Utils/Env.ml)). It is defined as:
+```ocaml
+{
+    classes_env = classes_env;
+    exec_env = Env.initial();
+    current_class = "";
+    current_method = None
+}
+```
+
+- `classes_env` is a HashTbl where classes info is stored as `javaclass` with their name as key. This Class environment is populated in [TypingEnv](Typing/TypingEnv.ml]. When populating the environment, some checks are done on different things like modifiers combination for instance.
+
+- The `exec_env` contains the environment of the method that is being checked, as `string`,`type` pairs, each pair corresponding to a local variable, the `string` being its name and the `type` its type.
+
+- `current_class` is the name of the class being checked.
+
+- `current_method` is the `javamethod` (see in [Typing/TypingEnv.ml](Typing/TypingEnv.ml)) being checked.
+
+In [Typing/TypeExcept.ml](Typing/TypeExcept.ml) you will find the different exceptions that are raised in a case where a compile-time error should occur.
+
+We have not implemented type checking for the `Throw` and `Try` statements. As for expressions, we do not handle *casts*, *condop* and *classof*.
+
+We do not handle the `static` contexts and accesibility for the classes. We handle basic *inheritance* and `private` attributes.
+
+
+## Parser bugs and fixes
 
 We have noticed some errors in the built AST, they are listed below and are
 fixed when we needed. Some patches might be merged back upstream for next
