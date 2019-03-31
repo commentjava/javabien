@@ -21,6 +21,10 @@ class Request {
                 System.out.print(this.protocol);
                 System.out.println("");
         }
+
+        public String getUri() {
+                return uri;
+        }
 }
 
 class HServer {
@@ -95,7 +99,7 @@ class HServer {
                 this.os.println("HTTP/1.0 200 OK");
                 // this.os.println("Content-Type: text/html; charset=UTF-8");
                 this.os.println("Server: JavabienHTTPServer");
-                String filename = String.concat(this.folder, request.uri);
+                String filename = String.concat(this.folder, request.getUri());
                 int fs = this.fileSize(filename);
                 String contentLen = String.concat("Content-Length: ", String.fromInteger(fs));
                 this.os.println(contentLen);

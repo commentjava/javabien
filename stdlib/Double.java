@@ -157,8 +157,10 @@ class Double{
     else if(d == 0){ res = String.concat(res, "0.0"); }
     else if(0.001 <= d && d < 10000000.0){
       int nb_digits = 17; // number of digits we want
-      int pos_digit = 0, digit, val_to_reach = 1.0;
-      for(int i = 0 ; i <= nb_digits ; i ++){ val_to_reach *= 10.0; }
+      int digit = 1;
+      int val_to_reach = 1;
+      int pos_digit = 0;
+      for(int i = 0 ; i <= nb_digits ; i ++){ val_to_reach *= 1; }
       float d_copy = d;
       while(d_copy < val_to_reach){
         d_copy *= 10.0;
