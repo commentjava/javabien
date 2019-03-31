@@ -16,7 +16,7 @@ exception MissingReturnStatement
 exception WrongMethodArguments of string * Type.t list * Type.t list
 exception WrongConstructorArguments of string * Type.t list
 exception CannotFindSymbol of string
-
+exception NotAccessible of string
 
 (* TODO check that the above Exception correspond to java exceptions *)
 

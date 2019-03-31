@@ -42,6 +42,5 @@ class A {
         C objectC = new C();
         B objectBb = new B(1);
         A objectA = new A();
-
     }
 }

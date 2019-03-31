@@ -574,6 +574,15 @@ let rec function_return_type (env: tc_env) (c_type: Type.t) (mname: string) (par
   | _ -> raise(TypeExcept.WrongType "Only reference types have methods")
 ;;
 
+let rec check_accessibility (ref_: Type.ref_type) (env: tc_env) (modifiers: AST.modifier list) (name: string) =
+  match modifiers with
+  | [] -> ()
+  | h::t -> (
+    if (Type.stringOf_ref ref_) <> env.current_class && h == AST.Private then raise(TypeExcept.NotAccessible(name)) else ();
+    check_accessibility ref_ env t name
+  )
+;;
+
 let rec class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
   match c_type with
   | Ref(r) -> (
@@ -584,7 +593,7 @@ let rec class_attr_type (env: tc_env) (c_type: Type.t) (attr_name: string) =
         try (
           let elt = get_elt_of_enclosed_class class_ "attr" t in
           match elt with
-          | Attr(a) -> a.atype
+          | Attr(a) -> check_accessibility r env a.modifiers attr_name; a.atype
           (* Attr could be a enclosed type *)
           | Type(c) -> Type.Ref({tpath = r.tpath@[r.tid] ; tid = attr_name})
         ) with TypeExcept.CannotFindSymbol(s) -> (
