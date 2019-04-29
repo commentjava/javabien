@@ -295,7 +295,7 @@ Our type-checking environment uses two `HashTbl` (the one provided in [Utils/Env
 }
 ```
 
-- `classes_env` is a HashTbl where classes info is stored as `javaclass` with their name as key. This Class environment is populated in [TypingEnv](Typing/TypingEnv.ml]. When populating the environment, some checks are done on different things like modifiers combination for instance.
+- `classes_env` is a HashTbl where classes info is stored as `javaclass` with their name as key. This Class environment is populated in [TypingEnv](Typing/TypingEnv.ml). When populating the environment, some checks are done on different things like modifiers combination for instance.
 
 - The `exec_env` contains the environment of the method that is being checked, as `string`,`type` pairs, each pair corresponding to a local variable, the `string` being its name and the `type` its type.
 
